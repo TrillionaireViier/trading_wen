@@ -63,6 +63,13 @@ function App() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [editingId, setEditingId] = useState(null);
   
+  // Auto-Pilot
+  const [autoPilot, setAutoPilot] = useState(false);
+  const autoPilotRef = useRef(autoPilot);
+  useEffect(() => {
+    autoPilotRef.current = autoPilot;
+  }, [autoPilot]);
+  
   // Modals
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -75,13 +82,12 @@ function App() {
   const [settings, setSettings] = useState(() => {
     const saved = JSON.parse(localStorage.getItem('trading_settings') || '{}');
     const channels = saved.tgChannels || [];
-    if (channels.length === 0 && saved.tgChatId) {
-      channels.push({ id: 1, name: 'Default Channel', chatId: saved.tgChatId });
+    if (channels.length === 0 && saved.tgChatId && saved.tgBotToken) {
+      channels.push({ id: 1, name: 'Default Channel', chatId: saved.tgChatId, botToken: saved.tgBotToken });
     }
     return {
-      tgBotToken: saved.tgBotToken || '',
       tgChannels: channels,
-      msgTemplate: saved.msgTemplate || 'New Asset: {name} ({ticker}) at ${price}'
+      msgTemplate: saved.msgTemplate || '🚀 ALERT: {name} ({ticker}) just pumped to ${price}!\nTime to short? 📉'
     };
   });
   const [notifications, setNotifications] = useState([]);
@@ -104,18 +110,6 @@ function App() {
     localStorage.setItem('trading_logs', JSON.stringify(logs));
     localStorage.setItem('trading_settings', JSON.stringify(settings));
   }, [assets, logs, settings]);
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.metaKey && e.key === 'k') {
-        e.preventDefault();
-        document.getElementById('searchInput')?.focus();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
 
   // Helpers
   const addLog = (action, details) => {
@@ -143,10 +137,75 @@ function App() {
         return parseFloat(data.c).toFixed(2);
       }
     } catch (e) {
-      notify(`Could not fetch price for ${ticker}: ${e.message}`, 'error');
+      // notify(`Could not fetch price for ${ticker}: ${e.message}`, 'error');
       return null;
     }
   };
+  
+  // Auto-Pilot Tracker
+  useEffect(() => {
+    let interval;
+    if (autoPilot) {
+      interval = setInterval(async () => {
+        if (!autoPilotRef.current) return;
+        let updatedAssets = false;
+        
+        const newAssets = await Promise.all(assets.map(async (asset) => {
+          const livePriceStr = await fetchLivePrice(asset.ticker, asset.type);
+          if (livePriceStr && livePriceStr !== asset.price) {
+            const livePrice = parseFloat(livePriceStr);
+            const oldPrice = parseFloat(asset.price);
+            
+            if (oldPrice > 0) {
+              const changePercent = ((livePrice - oldPrice) / oldPrice) * 100;
+              // If price pumped by 2% or more
+              if (changePercent >= 2) {
+                notify(`Auto-Pilot Alert: ${asset.ticker} pumped +${changePercent.toFixed(1)}%!`, 'success');
+                addLog('Auto-Pilot', `Alert for ${asset.ticker} (+${changePercent.toFixed(1)}%)`);
+                
+                // Broadcast to all configured Telegram channels
+                settings.tgChannels.forEach(async (channel) => {
+                  if (!channel.botToken) return;
+                  const text = settings.msgTemplate
+                    .replace('{name}', asset.name)
+                    .replace('{ticker}', asset.ticker)
+                    .replace('{price}', livePriceStr);
+                  
+                  try {
+                    await fetch(`https://api.telegram.org/bot${channel.botToken}/sendMessage`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ chat_id: channel.chatId, text })
+                    });
+                  } catch(e) {}
+                });
+              }
+            }
+            updatedAssets = true;
+            return { ...asset, price: livePriceStr };
+          }
+          return asset;
+        }));
+        
+        if (updatedAssets) {
+          setAssets(newAssets);
+        }
+      }, 60000); // Check every 60 seconds
+    }
+    return () => clearInterval(interval);
+  }, [autoPilot, assets, settings]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.metaKey && e.key === 'k') {
+        e.preventDefault();
+        document.getElementById('searchInput')?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const handleRefreshAll = async () => {
     notify('Refreshing prices...', 'info');
@@ -226,8 +285,8 @@ function App() {
 
   // Telegram Integration
   const handleOpenTgPublish = () => {
-    if (!settings.tgBotToken || settings.tgChannels.length === 0) {
-      return notify('Configure Telegram Bot and at least 1 Channel in Settings first!', 'error');
+    if (settings.tgChannels.length === 0) {
+      return notify('Configure at least 1 Telegram Channel in Settings first!', 'error');
     }
     const toPublish = assets.filter(a => selectedIds.includes(a.id));
     if (toPublish.length === 0) return;
@@ -244,7 +303,7 @@ function App() {
     let sentCount = 0;
     for (const channelId of selectedTgChannels) {
       const channel = settings.tgChannels.find(c => c.id === channelId);
-      if (!channel) continue;
+      if (!channel || !channel.botToken) continue;
       
       for (const asset of assetsToPublish) {
         const text = settings.msgTemplate
@@ -253,7 +312,7 @@ function App() {
           .replace('{price}', asset.price);
         
         try {
-          await fetch(`https://api.telegram.org/bot${settings.tgBotToken}/sendMessage`, {
+          await fetch(`https://api.telegram.org/bot${channel.botToken}/sendMessage`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ chat_id: channel.chatId, text })
@@ -412,8 +471,8 @@ function App() {
         </nav>
         <div className="sidebar-footer">
           <div className="bot-status">
-            <div className={`status-dot ${settings.tgBotToken ? 'active' : ''}`}></div>
-            <span>Bot {settings.tgBotToken ? 'Connected' : 'Offline'}</span>
+            <div className={`status-dot ${settings.tgChannels.length > 0 ? 'active' : ''}`}></div>
+            <span>{settings.tgChannels.length} Bots Connected</span>
           </div>
         </div>
       </aside>
@@ -503,6 +562,12 @@ function App() {
                   <div className="toolbar-actions">
                     <button className="btn-primary" onClick={() => setShowAddModal(true)}><Plus size={16}/> Add New</button>
                     <button className="btn-secondary" onClick={handleRefreshAll}>🔄 Refresh Prices</button>
+                    <button className="btn-secondary" style={autoPilot ? {borderColor: '#10b981', color: '#10b981', background: 'rgba(16, 185, 129, 0.1)'} : {}} onClick={() => {
+                      setAutoPilot(!autoPilot);
+                      notify(autoPilot ? 'Auto-Pilot Disabled' : 'Auto-Pilot Enabled: Tracking every minute', autoPilot ? 'info' : 'success');
+                    }}>
+                      {autoPilot ? '🛑 Stop Auto-Pilot' : '🤖 Start Auto-Pilot'}
+                    </button>
                     {selectedIds.length > 0 && (
                       <>
                         <button className="btn-danger" onClick={handleBatchDelete}><Trash2 size={16}/> Delete ({selectedIds.length})</button>
@@ -609,33 +674,32 @@ function App() {
                 <h2>System Settings</h2>
                 <div className="settings-grid">
                   <div className="settings-card">
-                    <h3>Telegram API</h3>
-                    <div className="form-group">
-                      <label>Bot Token</label>
-                      <input type="password" value={settings.tgBotToken} onChange={e => setSettings({...settings, tgBotToken: e.target.value})} />
-                    </div>
-                    <h4>Connected Channels</h4>
+                    <h3>Telegram Integrations (Multi-Bot)</h3>
+                    <h4>Connected Channels & Bots</h4>
                     <div style={{display:'flex', flexDirection:'column', gap:'10px', marginBottom: '16px'}}>
                       {settings.tgChannels.map(ch => (
                         <div key={ch.id} style={{display:'flex', justifyContent:'space-between', background:'var(--bg-primary)', padding:'12px', border:'1px solid var(--border-color)', borderRadius:'8px', alignItems:'center'}}>
                           <div>
                             <strong>{ch.name}</strong><br/>
-                            <small className="text-muted">{ch.chatId}</small>
+                            <small className="text-muted">Chat: {ch.chatId}</small><br/>
+                            <small className="text-muted">Bot: {ch.botToken ? '***' + ch.botToken.slice(-4) : 'Not set'}</small>
                           </div>
                           <button style={{color:'var(--danger-color)', background:'transparent', border:'none', cursor:'pointer', padding:'8px'}} onClick={() => {
                             setSettings({...settings, tgChannels: settings.tgChannels.filter(c => c.id !== ch.id)});
                           }}><Trash2 size={18}/></button>
                         </div>
                       ))}
-                      {settings.tgChannels.length === 0 && <span className="text-muted">No channels added.</span>}
+                      {settings.tgChannels.length === 0 && <span className="text-muted">No bots added.</span>}
                     </div>
                     <button className="btn-secondary" style={{width: '100%', justifyContent: 'center'}} onClick={() => {
                       const name = prompt('Channel Name (e.g. VIP Signals):');
                       if(!name) return;
                       const chatId = prompt('Chat ID (e.g. @mychannel or -100123...):');
                       if(!chatId) return;
-                      setSettings({...settings, tgChannels: [...settings.tgChannels, {id: Date.now(), name, chatId}]});
-                    }}><Plus size={16}/> Add Channel</button>
+                      const botToken = prompt('Bot Token for this channel (from @BotFather):');
+                      if(!botToken) return;
+                      setSettings({...settings, tgChannels: [...settings.tgChannels, {id: Date.now(), name, chatId, botToken}]});
+                    }}><Plus size={16}/> Add Bot & Channel</button>
                   </div>
                   
                   <div className="settings-card">
