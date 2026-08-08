@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import { 
   Bell, Settings, LogOut, Sun, Moon, Search, Download, Upload, Trash2, 
-  Edit2, Menu, X, Check, Eye, Save, Plus, ArrowUpRight, ArrowDownRight, Printer, AlertTriangle
+  Edit2, Menu, X, Check, Eye, Save, Plus, ArrowUpRight, ArrowDownRight, Printer, AlertTriangle, Send
 } from 'lucide-react';
 import Papa from 'papaparse';
 import './App.css';
@@ -60,12 +60,28 @@ function App() {
   const itemsPerPage = 5;
   const [selectedIds, setSelectedIds] = useState([]);
   const [editingId, setEditingId] = useState(null);
+  
+  // Modals
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newAsset, setNewAsset] = useState({ name: '', ticker: '', price: '', type: 'Crypto' });
+  const [showTgModal, setShowTgModal] = useState(false);
+  const [assetsToPublish, setAssetsToPublish] = useState([]);
+  const [selectedTgChannels, setSelectedTgChannels] = useState([]);
   
   // Forms & Settings
-  const [settings, setSettings] = useState(() => JSON.parse(localStorage.getItem('trading_settings') || '{"tgBotToken":"", "tgChatId":"", "msgTemplate":"New Asset: {name} ({ticker}) at ${price}"}'));
+  const [settings, setSettings] = useState(() => {
+    const saved = JSON.parse(localStorage.getItem('trading_settings') || '{}');
+    const channels = saved.tgChannels || [];
+    if (channels.length === 0 && saved.tgChatId) {
+      channels.push({ id: 1, name: 'Default Channel', chatId: saved.tgChatId });
+    }
+    return {
+      tgBotToken: saved.tgBotToken || '',
+      tgChannels: channels,
+      msgTemplate: saved.msgTemplate || 'New Asset: {name} ({ticker}) at ${price}'
+    };
+  });
   const [notifications, setNotifications] = useState([]);
   
   const fileInputRef = useRef(null);
@@ -207,31 +223,48 @@ function App() {
   };
 
   // Telegram Integration
-  const publishToTelegram = async (assetList) => {
-    if (!settings.tgBotToken || !settings.tgChatId) {
-      notify('Configure Telegram in Settings first!', 'error');
-      return;
+  const handleOpenTgPublish = () => {
+    if (!settings.tgBotToken || settings.tgChannels.length === 0) {
+      return notify('Configure Telegram Bot and at least 1 Channel in Settings first!', 'error');
     }
+    const toPublish = assets.filter(a => selectedIds.includes(a.id));
+    if (toPublish.length === 0) return;
+    setAssetsToPublish(toPublish);
+    setSelectedTgChannels(settings.tgChannels.map(c => c.id));
+    setShowTgModal(true);
+  };
 
-    notify(`Sending ${assetList.length} items to Telegram...`);
-    for (const asset of assetList) {
-      const text = settings.msgTemplate
-        .replace('{name}', asset.name)
-        .replace('{ticker}', asset.ticker)
-        .replace('{price}', asset.price);
+  const confirmTgPublish = async () => {
+    if (selectedTgChannels.length === 0) return notify('Select at least one channel', 'error');
+    setShowTgModal(false);
+    notify(`Sending ${assetsToPublish.length} items to ${selectedTgChannels.length} channels...`);
+    
+    let sentCount = 0;
+    for (const channelId of selectedTgChannels) {
+      const channel = settings.tgChannels.find(c => c.id === channelId);
+      if (!channel) continue;
       
-      try {
-        await fetch(`https://api.telegram.org/bot${settings.tgBotToken}/sendMessage`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chat_id: settings.tgChatId, text })
-        });
-      } catch (e) {
-        console.error(e);
+      for (const asset of assetsToPublish) {
+        const text = settings.msgTemplate
+          .replace('{name}', asset.name)
+          .replace('{ticker}', asset.ticker)
+          .replace('{price}', asset.price);
+        
+        try {
+          await fetch(`https://api.telegram.org/bot${settings.tgBotToken}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: channel.chatId, text })
+          });
+          sentCount++;
+        } catch (e) {
+          console.error(e);
+        }
       }
     }
-    notify('Published to Telegram!', 'success');
-    addLog('Telegram Publish', `Sent ${assetList.length} assets`);
+    notify(`Sent ${sentCount} messages successfully!`, 'success');
+    addLog('Telegram Publish', `Sent to ${selectedTgChannels.length} channels`);
+    setSelectedIds([]);
   };
 
   // Filtering & Sorting
@@ -273,6 +306,34 @@ function App() {
             <div className="modal-actions">
               <button className="btn-secondary" onClick={() => setShowDeleteModal(false)}>Cancel</button>
               <button className="btn-danger" onClick={confirmDelete}>Yes, Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Telegram Channel Select Modal */}
+      {showTgModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-icon" style={{background: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8'}}><Send size={32} /></div>
+            <h3>Select Channels</h3>
+            <p style={{marginBottom: '10px'}}>Publishing {assetsToPublish.length} assets to Telegram.</p>
+            <div style={{textAlign: 'left', marginBottom: '24px', maxHeight: '150px', overflowY: 'auto', padding: '10px', background: 'var(--bg-primary)', borderRadius: '8px'}}>
+              {settings.tgChannels.map(ch => (
+                <label key={ch.id} style={{display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', cursor: 'pointer', borderBottom: '1px solid var(--border-color)'}}>
+                  <input type="checkbox" checked={selectedTgChannels.includes(ch.id)} 
+                    onChange={(e) => {
+                      if (e.target.checked) setSelectedTgChannels([...selectedTgChannels, ch.id]);
+                      else setSelectedTgChannels(selectedTgChannels.filter(id => id !== ch.id));
+                    }} 
+                  />
+                  <span>{ch.name} <span style={{color: 'var(--text-secondary)', fontSize: '0.85rem'}}>({ch.chatId})</span></span>
+                </label>
+              ))}
+            </div>
+            <div className="modal-actions">
+              <button className="btn-secondary" onClick={() => setShowTgModal(false)}>Cancel</button>
+              <button className="btn-primary" onClick={confirmTgPublish}>Send Now</button>
             </div>
           </div>
         </div>
@@ -446,7 +507,7 @@ function App() {
                     {selectedIds.length > 0 && (
                       <>
                         <button className="btn-danger" onClick={handleBatchDelete}><Trash2 size={16}/> Delete ({selectedIds.length})</button>
-                        <button className="btn-secondary" onClick={() => publishToTelegram(assets.filter(a=>selectedIds.includes(a.id)))}>
+                        <button className="btn-secondary" onClick={handleOpenTgPublish}>
                           Publish to TG
                         </button>
                       </>
@@ -554,10 +615,28 @@ function App() {
                       <label>Bot Token</label>
                       <input type="password" value={settings.tgBotToken} onChange={e => setSettings({...settings, tgBotToken: e.target.value})} />
                     </div>
-                    <div className="form-group">
-                      <label>Chat ID</label>
-                      <input type="text" value={settings.tgChatId} onChange={e => setSettings({...settings, tgChatId: e.target.value})} />
+                    <h4>Connected Channels</h4>
+                    <div style={{display:'flex', flexDirection:'column', gap:'10px', marginBottom: '16px'}}>
+                      {settings.tgChannels.map(ch => (
+                        <div key={ch.id} style={{display:'flex', justifyContent:'space-between', background:'var(--bg-primary)', padding:'12px', border:'1px solid var(--border-color)', borderRadius:'8px', alignItems:'center'}}>
+                          <div>
+                            <strong>{ch.name}</strong><br/>
+                            <small className="text-muted">{ch.chatId}</small>
+                          </div>
+                          <button style={{color:'var(--danger-color)', background:'transparent', border:'none', cursor:'pointer', padding:'8px'}} onClick={() => {
+                            setSettings({...settings, tgChannels: settings.tgChannels.filter(c => c.id !== ch.id)});
+                          }}><Trash2 size={18}/></button>
+                        </div>
+                      ))}
+                      {settings.tgChannels.length === 0 && <span className="text-muted">No channels added.</span>}
                     </div>
+                    <button className="btn-secondary" style={{width: '100%', justifyContent: 'center'}} onClick={() => {
+                      const name = prompt('Channel Name (e.g. VIP Signals):');
+                      if(!name) return;
+                      const chatId = prompt('Chat ID (e.g. @mychannel or -100123...):');
+                      if(!chatId) return;
+                      setSettings({...settings, tgChannels: [...settings.tgChannels, {id: Date.now(), name, chatId}]});
+                    }}><Plus size={16}/> Add Channel</button>
                   </div>
                   
                   <div className="settings-card">
