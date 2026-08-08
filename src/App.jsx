@@ -261,12 +261,13 @@ function App() {
         const res = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${ticker.toUpperCase()}USDT`);
         if (!res.ok) throw new Error('Not found on Binance (use standard ticker like BTC)');
         const data = await res.json();
+        if (data.price === undefined) throw new Error('Invalid crypto price');
         return parseFloat(data.price).toFixed(4);
       } else {
         const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker.toUpperCase()}&token=d9rjbd1r01qoo7o4kca0d9rjbd1r01qoo7o4kcag`);
         if (!res.ok) throw new Error('Not found on Finnhub');
         const data = await res.json();
-        if (data.c === 0) throw new Error('Invalid stock ticker');
+        if (data.error || data.c === undefined || data.c === 0) throw new Error(data.error || 'Invalid stock ticker');
         return parseFloat(data.c).toFixed(2);
       }
     } catch (e) {
