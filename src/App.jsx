@@ -180,9 +180,10 @@ function App() {
   // Data
   const [assets, setAssets] = useState(() => {
     const saved = localStorage.getItem('trading_assets_v2');
-    return saved ? JSON.parse(saved) : [
+    let parsed = saved ? JSON.parse(saved) : [
       { id: Date.now(), name: "Wendy's", ticker: 'WEN', price: '0', type: 'Stock', date: new Date().toLocaleDateString() }
     ];
+    return parsed.map(a => (a.price === 'NaN' || Number.isNaN(a.price) ? { ...a, price: '0' } : a));
   });
   const [logs, setLogs] = useState(() => JSON.parse(localStorage.getItem('trading_logs') || '[]'));
   
