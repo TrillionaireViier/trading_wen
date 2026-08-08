@@ -59,7 +59,8 @@ function App() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newAsset, setNewAsset] = useState({ name: '', ticker: '', price: '', type: 'Crypto' });
   // Forms & Settings
   const [settings, setSettings] = useState(() => JSON.parse(localStorage.getItem('trading_settings') || '{"tgBotToken":"", "tgChatId":"", "msgTemplate":"New Asset: {name} ({ticker}) at ${price}"}'));
   const [notifications, setNotifications] = useState([]);
@@ -234,6 +235,49 @@ function App() {
         </div>
       )}
 
+      {/* Add Asset Modal */}
+      {showAddModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-icon" style={{background: 'rgba(56, 189, 248, 0.1)', color: 'var(--accent-color)'}}><Plus size={32} /></div>
+            <h3>Add New Asset</h3>
+            <div className="form-group" style={{textAlign: 'left', marginBottom: '16px'}}>
+              <label>Name</label>
+              <input type="text" placeholder="e.g. Bitcoin" value={newAsset.name} onChange={e => setNewAsset({...newAsset, name: e.target.value})} />
+            </div>
+            <div className="form-group" style={{textAlign: 'left', marginBottom: '16px'}}>
+              <label>Ticker</label>
+              <input type="text" placeholder="e.g. BTC" value={newAsset.ticker} onChange={e => setNewAsset({...newAsset, ticker: e.target.value})} />
+            </div>
+            <div className="form-group" style={{textAlign: 'left', marginBottom: '16px'}}>
+              <label>Price ($)</label>
+              <input type="number" placeholder="e.g. 60000" value={newAsset.price} onChange={e => setNewAsset({...newAsset, price: e.target.value})} />
+            </div>
+            <div className="form-group" style={{textAlign: 'left', marginBottom: '24px'}}>
+              <label>Type</label>
+              <select style={{width: '100%', padding: '12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '8px', outline: 'none'}} value={newAsset.type} onChange={e => setNewAsset({...newAsset, type: e.target.value})}>
+                <option value="Crypto">Crypto</option>
+                <option value="Stock">Stock</option>
+              </select>
+            </div>
+            <div className="modal-actions">
+              <button className="btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
+              <button className="btn-primary" onClick={() => {
+                if (newAsset.name && newAsset.ticker && newAsset.price) {
+                  setAssets([{id: Date.now(), ...newAsset, date: new Date().toLocaleDateString()}, ...assets]);
+                  addLog('Added Asset', newAsset.name);
+                  setShowAddModal(false);
+                  setNewAsset({ name: '', ticker: '', price: '', type: 'Crypto' });
+                  notify('Asset added successfully', 'success');
+                } else {
+                  notify('Please fill out all fields', 'error');
+                }
+              }}>Add Asset</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Sidebar */}
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
@@ -339,15 +383,7 @@ function App() {
             <div className="assets-view">
               <div className="toolbar">
                 <div className="toolbar-actions">
-                  <button className="btn-primary" onClick={() => {
-                    const name = prompt("Asset Name?");
-                    const ticker = prompt("Ticker?");
-                    const price = prompt("Price?");
-                    if (name && ticker && price) {
-                      setAssets([{id: Date.now(), name, ticker, price, type: 'Crypto', date: new Date().toLocaleDateString()}, ...assets]);
-                      addLog('Added Asset', name);
-                    }
-                  }}><Plus size={16}/> Add New</button>
+                  <button className="btn-primary" onClick={() => setShowAddModal(true)}><Plus size={16}/> Add New</button>
                   {selectedIds.length > 0 && (
                     <>
                       <button className="btn-danger" onClick={handleBatchDelete}><Trash2 size={16}/> Delete ({selectedIds.length})</button>
