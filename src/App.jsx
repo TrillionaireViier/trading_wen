@@ -49,7 +49,9 @@ function App() {
   // Data
   const [assets, setAssets] = useState(() => {
     const saved = localStorage.getItem('trading_assets_v2');
-    return saved ? JSON.parse(saved) : [];
+    return saved ? JSON.parse(saved) : [
+      { id: Date.now(), name: "Wendy's", ticker: 'WEN', price: '0', type: 'Stock', date: new Date().toLocaleDateString() }
+    ];
   });
   const [logs, setLogs] = useState(() => JSON.parse(localStorage.getItem('trading_logs') || '[]'));
   
@@ -432,8 +434,8 @@ function App() {
               {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
             </button>
             <div className="profile">
-              <div className="avatar">A</div>
-              <span className="hidden-mobile">Admin</span>
+              <div className="avatar" style={{background: 'linear-gradient(135deg, #38bdf8, #818cf8)', color: '#fff'}}>A</div>
+              <span style={{fontWeight: '600'}}>Admin</span>
             </div>
           </div>
         </header>
