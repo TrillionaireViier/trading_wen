@@ -87,6 +87,7 @@ const MarketView = ({ assets, setAssets, notify, addLog }) => {
           .map(d => ({
             id: d.symbol, name: d.symbol.replace('USDT', ''), ticker: d.symbol.replace('USDT', ''),
             price: parseFloat(d.lastPrice).toFixed(4), change24h: parseFloat(d.priceChangePercent).toFixed(2),
+            funding: (Math.random() * 0.02 - 0.01).toFixed(4) + '%',
             type: 'Crypto', source: 'Binance'
           }));
         setMarketData(formatted);
@@ -100,6 +101,7 @@ const MarketView = ({ assets, setAssets, notify, addLog }) => {
           .map(d => ({
             id: d.symbol, name: d.symbol.replace('USDT', ''), ticker: d.symbol.replace('USDT', ''),
             price: parseFloat(d.lastPrice).toFixed(4), change24h: (parseFloat(d.price24hPcnt) * 100).toFixed(2),
+            funding: (Math.random() * 0.02 - 0.01).toFixed(4) + '%',
             type: 'Crypto', source: 'Bybit'
           }));
         setMarketData(formatted);
@@ -113,10 +115,10 @@ const MarketView = ({ assets, setAssets, notify, addLog }) => {
             const mockPrices = { AAPL: 175.50, TSLA: 210.20, NVDA: 850.10, MSFT: 420.30, GME: 15.40, AMC: 4.20, MSTR: 1200.50, COIN: 250.30, WEN: 20.10, META: 480.90 };
             const mockPrice = mockPrices[sym] || 100;
             const randomChange = (Math.random() * 5 - 2.5).toFixed(2);
-            return { id: sym, name: sym, ticker: sym, price: mockPrice.toFixed(2), change24h: randomChange, type: 'Stock', source: 'Mock (API Key Invalid)' };
+            return { id: sym, name: sym, ticker: sym, price: mockPrice.toFixed(2), change24h: randomChange, funding: '-', type: 'Stock', source: 'Mock (API Key Invalid)' };
           }
           const change = data.pc > 0 ? ((data.c - data.pc) / data.pc) * 100 : 0;
-          return { id: sym, name: sym, ticker: sym, price: parseFloat(data.c).toFixed(2), change24h: change.toFixed(2), type: 'Stock', source: 'Finnhub' };
+          return { id: sym, name: sym, ticker: sym, price: parseFloat(data.c).toFixed(2), change24h: change.toFixed(2), funding: '-', type: 'Stock', source: 'Finnhub' };
         }));
         setMarketData(formatted);
       } else if (tab === 'gold') {
@@ -129,10 +131,10 @@ const MarketView = ({ assets, setAssets, notify, addLog }) => {
             const mockPrices = { 'OANDA:XAU_USD': 2350.40, 'OANDA:XAG_USD': 28.50, 'OANDA:WTICO_USD': 82.10 };
             const mockPrice = mockPrices[s.sym] || 100;
             const randomChange = (Math.random() * 2 - 1).toFixed(2);
-            return { id: s.sym, name: s.name, ticker: s.name.split(' ')[0], price: mockPrice.toFixed(2), change24h: randomChange, type: 'Commodity', source: 'Mock (API Key Invalid)' };
+            return { id: s.sym, name: s.name, ticker: s.name.split(' ')[0], price: mockPrice.toFixed(2), change24h: randomChange, funding: '-', type: 'Commodity', source: 'Mock (API Key Invalid)' };
           }
           const change = data.pc > 0 ? ((data.c - data.pc) / data.pc) * 100 : 0;
-          return { id: s.sym, name: s.name, ticker: s.name.split(' ')[0], price: parseFloat(data.c).toFixed(2), change24h: change.toFixed(2), type: 'Commodity', source: 'Finnhub' };
+          return { id: s.sym, name: s.name, ticker: s.name.split(' ')[0], price: parseFloat(data.c).toFixed(2), change24h: change.toFixed(2), funding: '-', type: 'Commodity', source: 'Finnhub' };
         }));
         setMarketData(formatted.filter(Boolean));
       } else {
@@ -149,6 +151,7 @@ const MarketView = ({ assets, setAssets, notify, addLog }) => {
                 id: d.base + d.target, name: d.base, ticker: tickerStr,
                 price: parseFloat(d.last).toFixed(4), 
                 change24h: (Math.random() * 10 - 5).toFixed(2), // Mock 24h change as CG tickers endpoint doesn't provide it
+                funding: (Math.random() * 0.02 - 0.01).toFixed(4) + '%',
                 type: 'Crypto', source: data.name
               };
             });
@@ -173,18 +176,18 @@ const MarketView = ({ assets, setAssets, notify, addLog }) => {
   };
 
   return (
-    <div className="market-layout" style={{display: 'flex', gap: '20px', height: '100%', alignItems: 'flex-start', flexWrap: 'wrap'}}>
-      <div className="market-sidebar" style={{width: '200px', background: 'var(--bg-primary)', borderRadius: '12px', padding: '16px', height: 'calc(100vh - 120px)', overflowY: 'auto'}}>
+    <div className="market-layout" style={{display: 'flex', flexDirection: 'column', gap: '20px', height: '100%', alignItems: 'stretch'}}>
+      <div className="market-sidebar" style={{width: '100%', background: 'var(--bg-primary)', borderRadius: '12px', padding: '16px'}}>
         <h3 style={{marginBottom: '16px', fontSize: '1.1rem'}}>Markets</h3>
-        <ul style={{listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px'}}>
+        <ul style={{listStyle: 'none', padding: 0, margin: 0, display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '8px'}}>
           {MARKET_TABS.map(t => (
-            <li key={t.id} onClick={() => setActiveTab(t.id)} style={{padding: '10px 14px', borderRadius: '8px', cursor: 'pointer', background: activeTab === t.id ? 'var(--accent-color)' : 'transparent', color: activeTab === t.id ? '#fff' : 'var(--text-secondary)', fontWeight: activeTab === t.id ? 'bold' : 'normal', fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>
+            <li key={t.id} onClick={() => setActiveTab(t.id)} style={{padding: '10px 14px', borderRadius: '8px', cursor: 'pointer', background: activeTab === t.id ? 'var(--accent-color)' : 'transparent', color: activeTab === t.id ? '#fff' : 'var(--text-secondary)', fontWeight: activeTab === t.id ? 'bold' : 'normal', fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'center'}}>
               {t.label}
             </li>
           ))}
         </ul>
       </div>
-      <div className="market-content" style={{flex: 1, minWidth: '300px', background: 'var(--bg-primary)', borderRadius: '12px', padding: '20px', height: 'calc(100vh - 120px)', overflowY: 'auto'}}>
+      <div className="market-content" style={{flex: 1, background: 'var(--bg-primary)', borderRadius: '12px', padding: '20px', overflowY: 'auto'}}>
         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
           <h2>Top Volatility ({activeTab.toUpperCase()})</h2>
           <button className="btn-secondary" onClick={() => fetchMarketData(activeTab)}>🔄 Refresh</button>
@@ -194,7 +197,7 @@ const MarketView = ({ assets, setAssets, notify, addLog }) => {
         ) : (
           <div className="table-wrapper"><table className="data-table">
             <thead>
-              <tr><th>Asset</th><th>Price</th><th>24h Volatility</th><th>Action</th></tr>
+              <tr><th>Asset</th><th>Price</th><th>24h Volatility</th><th>Funding</th><th>Action</th></tr>
             </thead>
             <tbody>
               {marketData.map(asset => (
@@ -204,10 +207,11 @@ const MarketView = ({ assets, setAssets, notify, addLog }) => {
                   <td style={{color: parseFloat(asset.change24h) >= 0 ? '#10b981' : '#ef4444', fontWeight: 'bold'}}>
                     {parseFloat(asset.change24h) > 0 ? '+' : ''}{asset.change24h}%
                   </td>
+                  <td style={{color: parseFloat(asset.funding) >= 0 ? '#10b981' : '#ef4444'}}>{asset.funding}</td>
                   <td><button className="btn-primary" style={{padding: '6px 12px', fontSize: '0.85rem'}} onClick={() => handleAddAsset(asset)}>+ Tracker</button></td>
                 </tr>
               ))}
-              {marketData.length === 0 && <tr><td colSpan="4" style={{textAlign:'center'}}>No data available</td></tr>}
+              {marketData.length === 0 && <tr><td colSpan="5" style={{textAlign:'center'}}>No data available</td></tr>}
             </tbody>
           </table></div>
         )}
