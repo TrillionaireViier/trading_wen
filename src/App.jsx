@@ -464,19 +464,16 @@ function App() {
                 </div>
 
                 {/* Widgets Row 2 */}
-                <div className="widget chart-widget col-span-2">
-                  <h3>Portfolio Performance</h3>
-                  <div className="chart-container">
-                    <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={MOCK_CHART_DATA}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                        <XAxis dataKey="name" stroke="#94a3b8" />
-                        <YAxis stroke="#94a3b8" />
-                        <Tooltip contentStyle={{backgroundColor: '#1e293b', border: 'none'}} />
-                        <Line type="monotone" dataKey="value" stroke="#38bdf8" strokeWidth={3} dot={{r: 4}} activeDot={{r: 8}} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
+                <div className="widget chart-widget col-span-2" style={{padding: 0, overflow: 'hidden'}}>
+                  <iframe 
+                    src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview_wen&symbol=NASDAQ%3AWEN&interval=D&symboledit=1&saveimage=1&toolbarbg=1e293b&studies=%5B%5D&theme=dark&style=1&timezone=Etc%2FUTC&studies_overrides=%7B%7D&overrides=%7B%7D&enable_publishing=false&hideideas=1&hideideasbutton=1&hide_legend=0&hide_side_toolbar=0&backgroundColor=rgba(15%2C%2023%2C%2042%2C%201)&gridColor=rgba(51%2C%2065%2C%2085%2C%200.5)"
+                    width="100%" 
+                    height="350" 
+                    frameBorder="0" 
+                    allowTransparency="true" 
+                    scrolling="no" 
+                    allowFullScreen>
+                  </iframe>
                 </div>
                 
                 <div className="widget news-widget">
