@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { 
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell,
   CartesianGrid, Legend 
@@ -35,13 +36,14 @@ const TRANSLATIONS = {
 
 function App() {
   const [loading, setLoading] = useState(true);
+  const location = useLocation();
+  const activeTab = location.pathname.substring(1) || 'dashboard';
   
   // Theme & Language
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
   const [lang, setLang] = useState(() => localStorage.getItem('lang') || 'en');
   
   // Layout
-  const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
   // Data
@@ -61,6 +63,7 @@ function App() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newAsset, setNewAsset] = useState({ name: '', ticker: '', price: '', type: 'Crypto' });
+  
   // Forms & Settings
   const [settings, setSettings] = useState(() => JSON.parse(localStorage.getItem('trading_settings') || '{"tgBotToken":"", "tgChatId":"", "msgTemplate":"New Asset: {name} ({ticker}) at ${price}"}'));
   const [notifications, setNotifications] = useState([]);
@@ -286,9 +289,9 @@ function App() {
         </div>
         <nav className="sidebar-nav">
           {['dashboard', 'assets', 'analytics', 'logs', 'settings'].map(tab => (
-            <button key={tab} className={`nav-item ${activeTab === tab ? 'active' : ''}`} onClick={() => {setActiveTab(tab); setSidebarOpen(false);}}>
+            <Link key={tab} to={`/${tab}`} className={`nav-item ${activeTab === tab ? 'active' : ''}`} onClick={() => setSidebarOpen(false)} style={{textDecoration: 'none'}}>
               {t[tab]}
-            </button>
+            </Link>
           ))}
         </nav>
         <div className="sidebar-footer">
@@ -322,203 +325,212 @@ function App() {
         </header>
 
         <div className="content-scroll">
-          
-          {activeTab === 'dashboard' && (
-            <div className="dashboard-grid">
-              {/* Widgets Row 1 */}
-              <div className="widget stat-card">
-                <h3>{t.totalValue}</h3>
-                <div className="stat-value">$1,245,000</div>
-                <div className="stat-change positive"><ArrowUpRight size={16}/> +5.4% this week</div>
-              </div>
-              <div className="widget stat-card">
-                <h3>Total Assets Tracking</h3>
-                <div className="stat-value">{assets.length}</div>
-                <div className="stat-change text-muted">{assets.filter(a=>a.type==='Crypto').length} Cryptos / {assets.filter(a=>a.type==='Stock').length} Stocks</div>
-              </div>
-              <div className="widget stat-card">
-                <h3>Fear & Greed Index</h3>
-                <div className="fg-gauge">
-                  <div className="fg-value greed">74</div>
-                  <span>Greed</span>
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            
+            <Route path="/dashboard" element={
+              <div className="dashboard-grid">
+                {/* Widgets Row 1 */}
+                <div className="widget stat-card">
+                  <h3>{t.totalValue}</h3>
+                  <div className="stat-value">$1,245,000</div>
+                  <div className="stat-change positive"><ArrowUpRight size={16}/> +5.4% this week</div>
+                </div>
+                <div className="widget stat-card">
+                  <h3>Total Assets Tracking</h3>
+                  <div className="stat-value">{assets.length}</div>
+                  <div className="stat-change text-muted">{assets.filter(a=>a.type==='Crypto').length} Cryptos / {assets.filter(a=>a.type==='Stock').length} Stocks</div>
+                </div>
+                <div className="widget stat-card">
+                  <h3>Fear & Greed Index</h3>
+                  <div className="fg-gauge">
+                    <div className="fg-value greed">74</div>
+                    <span>Greed</span>
+                  </div>
+                </div>
+
+                {/* Widgets Row 2 */}
+                <div className="widget chart-widget col-span-2">
+                  <h3>Portfolio Performance</h3>
+                  <div className="chart-container">
+                    <ResponsiveContainer width="100%" height={300}>
+                      <LineChart data={MOCK_CHART_DATA}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                        <XAxis dataKey="name" stroke="#94a3b8" />
+                        <YAxis stroke="#94a3b8" />
+                        <Tooltip contentStyle={{backgroundColor: '#1e293b', border: 'none'}} />
+                        <Line type="monotone" dataKey="value" stroke="#38bdf8" strokeWidth={3} dot={{r: 4}} activeDot={{r: 8}} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+                
+                <div className="widget news-widget">
+                  <h3>{t.news}</h3>
+                  <div className="news-list">
+                    {MOCK_NEWS.map(news => (
+                      <div key={news.id} className="news-item">
+                        <div className={`news-icon ${news.positive ? 'pos' : 'neg'}`}>
+                          {news.positive ? <ArrowUpRight size={14}/> : <ArrowDownRight size={14}/>}
+                        </div>
+                        <div className="news-content">
+                          <h4>{news.title}</h4>
+                          <span>{news.time}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
+            } />
 
-              {/* Widgets Row 2 */}
-              <div className="widget chart-widget col-span-2">
-                <h3>Portfolio Performance</h3>
-                <div className="chart-container">
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={MOCK_CHART_DATA}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                      <XAxis dataKey="name" stroke="#94a3b8" />
-                      <YAxis stroke="#94a3b8" />
-                      <Tooltip contentStyle={{backgroundColor: '#1e293b', border: 'none'}} />
-                      <Line type="monotone" dataKey="value" stroke="#38bdf8" strokeWidth={3} dot={{r: 4}} activeDot={{r: 8}} />
-                    </LineChart>
+            <Route path="/assets" element={
+              <div className="assets-view">
+                <div className="toolbar">
+                  <div className="toolbar-actions">
+                    <button className="btn-primary" onClick={() => setShowAddModal(true)}><Plus size={16}/> Add New</button>
+                    {selectedIds.length > 0 && (
+                      <>
+                        <button className="btn-danger" onClick={handleBatchDelete}><Trash2 size={16}/> Delete ({selectedIds.length})</button>
+                        <button className="btn-secondary" onClick={() => publishToTelegram(assets.filter(a=>selectedIds.includes(a.id)))}>
+                          Publish to TG
+                        </button>
+                      </>
+                    )}
+                  </div>
+                  <div className="toolbar-tools">
+                    <input type="file" ref={fileInputRef} style={{display:'none'}} accept=".csv" onChange={handleImportCSV} />
+                    <button className="icon-btn" title="Import CSV" onClick={() => fileInputRef.current.click()}><Upload size={18}/></button>
+                    <button className="icon-btn" title="Export CSV" onClick={handleExportCSV}><Download size={18}/></button>
+                    <button className="icon-btn" title="Print PDF" onClick={handlePrint}><Printer size={18}/></button>
+                  </div>
+                </div>
+
+                <div className="table-wrapper">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>
+                          <input type="checkbox" 
+                            checked={selectedIds.length === paginatedAssets.length && paginatedAssets.length > 0}
+                            onChange={(e) => setSelectedIds(e.target.checked ? paginatedAssets.map(a=>a.id) : [])} 
+                          />
+                        </th>
+                        <th onClick={() => setSortConfig({key: 'name', direction: sortConfig.direction === 'asc' ? 'desc' : 'asc'})}>Name ↕</th>
+                        <th>Ticker</th>
+                        <th onClick={() => setSortConfig({key: 'price', direction: sortConfig.direction === 'asc' ? 'desc' : 'asc'})}>Price ↕</th>
+                        <th>Type</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paginatedAssets.map(asset => (
+                        <tr key={asset.id} className={selectedIds.includes(asset.id) ? 'selected' : ''}>
+                          <td>
+                            <input type="checkbox" checked={selectedIds.includes(asset.id)} 
+                              onChange={(e) => setSelectedIds(e.target.checked ? [...selectedIds, asset.id] : selectedIds.filter(id=>id!==asset.id))} 
+                            />
+                          </td>
+                          <td>{editingId === asset.id ? <input defaultValue={asset.name} onBlur={(e) => {
+                            setAssets(assets.map(a => a.id === asset.id ? {...a, name: e.target.value} : a));
+                          }}/> : asset.name}</td>
+                          <td><span className="badge">{asset.ticker}</span></td>
+                          <td>{editingId === asset.id ? <input defaultValue={asset.price} onBlur={(e) => {
+                            setAssets(assets.map(a => a.id === asset.id ? {...a, price: e.target.value} : a));
+                          }}/> : `$${asset.price}`}</td>
+                          <td><span className={`type-tag ${asset.type.toLowerCase()}`}>{asset.type}</span></td>
+                          <td>
+                            <button className="action-btn" onClick={() => setEditingId(editingId === asset.id ? null : asset.id)}>
+                              {editingId === asset.id ? <Save size={16}/> : <Edit2 size={16}/>}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                
+                <div className="pagination">
+                  <button disabled={currentPage === 1} onClick={() => setCurrentPage(p=>p-1)}>Prev</button>
+                  <span>Page {currentPage} of {Math.ceil(filteredAssets.length / itemsPerPage) || 1}</span>
+                  <button disabled={currentPage >= Math.ceil(filteredAssets.length / itemsPerPage)} onClick={() => setCurrentPage(p=>p+1)}>Next</button>
+                </div>
+              </div>
+            } />
+
+            <Route path="/analytics" element={
+              <div className="analytics-view">
+                <h2>Portfolio Distribution</h2>
+                <div className="chart-wrapper">
+                  <ResponsiveContainer width="100%" height={400}>
+                    <PieChart>
+                      <Pie data={[{name: 'Crypto', value: 70}, {name: 'Stocks', value: 30}]} cx="50%" cy="50%" outerRadius={150} fill="#8884d8" dataKey="value" label>
+                        {[{name: 'Crypto'}, {name:'Stocks'}].map((entry, index) => <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                    </PieChart>
                   </ResponsiveContainer>
                 </div>
               </div>
-              
-              <div className="widget news-widget">
-                <h3>{t.news}</h3>
-                <div className="news-list">
-                  {MOCK_NEWS.map(news => (
-                    <div key={news.id} className="news-item">
-                      <div className={`news-icon ${news.positive ? 'pos' : 'neg'}`}>
-                        {news.positive ? <ArrowUpRight size={14}/> : <ArrowDownRight size={14}/>}
-                      </div>
-                      <div className="news-content">
-                        <h4>{news.title}</h4>
-                        <span>{news.time}</span>
-                      </div>
+            } />
+
+            <Route path="/logs" element={
+              <div className="logs-view">
+                <h2>Activity Logs</h2>
+                <div className="logs-list">
+                  {logs.map(log => (
+                    <div key={log.id} className="log-item">
+                      <span className="log-time">{log.time}</span>
+                      <span className="log-action">{log.action}</span>
+                      <span className="log-details">{log.details}</span>
                     </div>
                   ))}
                 </div>
               </div>
-            </div>
-          )}
+            } />
 
-          {activeTab === 'assets' && (
-            <div className="assets-view">
-              <div className="toolbar">
-                <div className="toolbar-actions">
-                  <button className="btn-primary" onClick={() => setShowAddModal(true)}><Plus size={16}/> Add New</button>
-                  {selectedIds.length > 0 && (
-                    <>
-                      <button className="btn-danger" onClick={handleBatchDelete}><Trash2 size={16}/> Delete ({selectedIds.length})</button>
-                      <button className="btn-secondary" onClick={() => publishToTelegram(assets.filter(a=>selectedIds.includes(a.id)))}>
-                        Publish to TG
-                      </button>
-                    </>
-                  )}
-                </div>
-                <div className="toolbar-tools">
-                  <input type="file" ref={fileInputRef} style={{display:'none'}} accept=".csv" onChange={handleImportCSV} />
-                  <button className="icon-btn" title="Import CSV" onClick={() => fileInputRef.current.click()}><Upload size={18}/></button>
-                  <button className="icon-btn" title="Export CSV" onClick={handleExportCSV}><Download size={18}/></button>
-                  <button className="icon-btn" title="Print PDF" onClick={handlePrint}><Printer size={18}/></button>
-                </div>
-              </div>
-
-              <div className="table-wrapper">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>
-                        <input type="checkbox" 
-                          checked={selectedIds.length === paginatedAssets.length && paginatedAssets.length > 0}
-                          onChange={(e) => setSelectedIds(e.target.checked ? paginatedAssets.map(a=>a.id) : [])} 
-                        />
-                      </th>
-                      <th onClick={() => setSortConfig({key: 'name', direction: sortConfig.direction === 'asc' ? 'desc' : 'asc'})}>Name ↕</th>
-                      <th>Ticker</th>
-                      <th onClick={() => setSortConfig({key: 'price', direction: sortConfig.direction === 'asc' ? 'desc' : 'asc'})}>Price ↕</th>
-                      <th>Type</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginatedAssets.map(asset => (
-                      <tr key={asset.id} className={selectedIds.includes(asset.id) ? 'selected' : ''}>
-                        <td>
-                          <input type="checkbox" checked={selectedIds.includes(asset.id)} 
-                            onChange={(e) => setSelectedIds(e.target.checked ? [...selectedIds, asset.id] : selectedIds.filter(id=>id!==asset.id))} 
-                          />
-                        </td>
-                        <td>{editingId === asset.id ? <input defaultValue={asset.name} onBlur={(e) => {
-                          setAssets(assets.map(a => a.id === asset.id ? {...a, name: e.target.value} : a));
-                        }}/> : asset.name}</td>
-                        <td><span className="badge">{asset.ticker}</span></td>
-                        <td>{editingId === asset.id ? <input defaultValue={asset.price} onBlur={(e) => {
-                          setAssets(assets.map(a => a.id === asset.id ? {...a, price: e.target.value} : a));
-                        }}/> : `$${asset.price}`}</td>
-                        <td><span className={`type-tag ${asset.type.toLowerCase()}`}>{asset.type}</span></td>
-                        <td>
-                          <button className="action-btn" onClick={() => setEditingId(editingId === asset.id ? null : asset.id)}>
-                            {editingId === asset.id ? <Save size={16}/> : <Edit2 size={16}/>}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              
-              <div className="pagination">
-                <button disabled={currentPage === 1} onClick={() => setCurrentPage(p=>p-1)}>Prev</button>
-                <span>Page {currentPage} of {Math.ceil(filteredAssets.length / itemsPerPage) || 1}</span>
-                <button disabled={currentPage >= Math.ceil(filteredAssets.length / itemsPerPage)} onClick={() => setCurrentPage(p=>p+1)}>Next</button>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'analytics' && (
-            <div className="analytics-view">
-              <h2>Portfolio Distribution</h2>
-              <div className="chart-wrapper">
-                <ResponsiveContainer width="100%" height={400}>
-                  <PieChart>
-                    <Pie data={[{name: 'Crypto', value: 70}, {name: 'Stocks', value: 30}]} cx="50%" cy="50%" outerRadius={150} fill="#8884d8" dataKey="value" label>
-                      {[{name: 'Crypto'}, {name:'Stocks'}].map((entry, index) => <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'logs' && (
-            <div className="logs-view">
-              <h2>Activity Logs</h2>
-              <div className="logs-list">
-                {logs.map(log => (
-                  <div key={log.id} className="log-item">
-                    <span className="log-time">{log.time}</span>
-                    <span className="log-action">{log.action}</span>
-                    <span className="log-details">{log.details}</span>
+            <Route path="/settings" element={
+              <div className="settings-view">
+                <h2>System Settings</h2>
+                <div className="settings-grid">
+                  <div className="settings-card">
+                    <h3>Telegram API</h3>
+                    <div className="form-group">
+                      <label>Bot Token</label>
+                      <input type="password" value={settings.tgBotToken} onChange={e => setSettings({...settings, tgBotToken: e.target.value})} />
+                    </div>
+                    <div className="form-group">
+                      <label>Chat ID</label>
+                      <input type="text" value={settings.tgChatId} onChange={e => setSettings({...settings, tgChatId: e.target.value})} />
+                    </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'settings' && (
-            <div className="settings-view">
-              <h2>System Settings</h2>
-              <div className="settings-grid">
-                <div className="settings-card">
-                  <h3>Telegram API</h3>
-                  <div className="form-group">
-                    <label>Bot Token</label>
-                    <input type="password" value={settings.tgBotToken} onChange={e => setSettings({...settings, tgBotToken: e.target.value})} />
+                  
+                  <div className="settings-card">
+                    <h3>Message Templates</h3>
+                    <div className="form-group">
+                      <label>New Asset Alert Format</label>
+                      <textarea rows="4" value={settings.msgTemplate} onChange={e => setSettings({...settings, msgTemplate: e.target.value})} />
+                      <small>Available tags: {'{name}, {ticker}, {price}'}</small>
+                    </div>
                   </div>
-                  <div className="form-group">
-                    <label>Chat ID</label>
-                    <input type="text" value={settings.tgChatId} onChange={e => setSettings({...settings, tgChatId: e.target.value})} />
+
+                  <div className="settings-card">
+                    <h3>Data Management</h3>
+                    <button className="btn-secondary" onClick={handleBackup}><Download size={16}/> Backup Database (JSON)</button>
+                    <p className="text-muted mt-2">Downloads all assets, logs, and settings.</p>
                   </div>
                 </div>
-                
-                <div className="settings-card">
-                  <h3>Message Templates</h3>
-                  <div className="form-group">
-                    <label>New Asset Alert Format</label>
-                    <textarea rows="4" value={settings.msgTemplate} onChange={e => setSettings({...settings, msgTemplate: e.target.value})} />
-                    <small>Available tags: {'{name}, {ticker}, {price}'}</small>
-                  </div>
-                </div>
-
-                <div className="settings-card">
-                  <h3>Data Management</h3>
-                  <button className="btn-secondary" onClick={handleBackup}><Download size={16}/> Backup Database (JSON)</button>
-                  <p className="text-muted mt-2">Downloads all assets, logs, and settings.</p>
-                </div>
               </div>
-            </div>
-          )}
+            } />
 
+            <Route path="*" element={
+              <div className="analytics-view" style={{textAlign: 'center', marginTop: '100px'}}>
+                <h2>404 - Not Found</h2>
+                <p>The page you are looking for does not exist.</p>
+              </div>
+            } />
+          </Routes>
         </div>
       </main>
     </div>
