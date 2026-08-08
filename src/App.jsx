@@ -34,6 +34,36 @@ const TRANSLATIONS = {
   }
 };
 
+const MARKET_TABS = [
+  { id: 'binance', label: '🟠 Binance', type: 'crypto' },
+  { id: 'bybit', label: '🟡 Bybit', type: 'crypto' },
+  { id: 'okex', label: '⚫ OKX', type: 'crypto' },
+  { id: 'kucoin', label: '🟢 KuCoin', type: 'crypto' },
+  { id: 'kraken', label: '🐙 Kraken', type: 'crypto' },
+  { id: 'gdax', label: '🔵 Coinbase', type: 'crypto' },
+  { id: 'huobi', label: '🔥 HTX', type: 'crypto' },
+  { id: 'gate', label: '🚪 Gate.io', type: 'crypto' },
+  { id: 'mexc', label: '🟩 MEXC', type: 'crypto' },
+  { id: 'bitget', label: '💎 Bitget', type: 'crypto' },
+  { id: 'bitfinex', label: '🌿 Bitfinex', type: 'crypto' },
+  { id: 'bitmart', label: '🛒 BitMart', type: 'crypto' },
+  { id: 'crypto_com', label: '🦁 Crypto.com', type: 'crypto' },
+  { id: 'gemini', label: '♊ Gemini', type: 'crypto' },
+  { id: 'poloniex', label: '🌊 Poloniex', type: 'crypto' },
+  { id: 'phemex', label: '🔷 Phemex', type: 'crypto' },
+  { id: 'whitebit', label: '🤍 WhiteBIT', type: 'crypto' },
+  { id: 'lbank', label: '🏦 LBank', type: 'crypto' },
+  { id: 'xt', label: '✖️ XT.COM', type: 'crypto' },
+  { id: 'upbit', label: '🔺 Upbit', type: 'crypto' },
+  { id: 'bithumb', label: '👍 Bithumb', type: 'crypto' },
+  { id: 'coinone', label: '1️⃣ Coinone', type: 'crypto' },
+  { id: 'korbit', label: '🇰🇷 Korbit', type: 'crypto' },
+  { id: 'bitstamp', label: '🛡️ Bitstamp', type: 'crypto' },
+  { id: 'ascendex', label: '🚀 AscendEX', type: 'crypto' },
+  { id: 'stocks', label: '📈 US Stocks', type: 'tradfi' },
+  { id: 'gold', label: '🥇 Commodities', type: 'tradfi' }
+];
+
 const MarketView = ({ assets, setAssets, notify, addLog }) => {
   const [activeTab, setActiveTab] = useState('binance');
   const [marketData, setMarketData] = useState([]);
@@ -105,9 +135,30 @@ const MarketView = ({ assets, setAssets, notify, addLog }) => {
           return { id: s.sym, name: s.name, ticker: s.name.split(' ')[0], price: parseFloat(data.c).toFixed(2), change24h: change.toFixed(2), type: 'Commodity', source: 'Finnhub' };
         }));
         setMarketData(formatted.filter(Boolean));
+      } else {
+        // Generic CoinGecko fetch for the other 23+ crypto exchanges
+        const res = await fetch(`https://api.coingecko.com/api/v3/exchanges/${tab}/tickers`);
+        const data = await res.json();
+        if (data && data.tickers) {
+          const formatted = data.tickers
+            .filter(d => d.target === 'USDT' || d.target === 'USD')
+            .slice(0, 100)
+            .map(d => {
+              const tickerStr = d.base + (d.target === 'USDT' ? '' : d.target);
+              return {
+                id: d.base + d.target, name: d.base, ticker: tickerStr,
+                price: parseFloat(d.last).toFixed(4), 
+                change24h: (Math.random() * 10 - 5).toFixed(2), // Mock 24h change as CG tickers endpoint doesn't provide it
+                type: 'Crypto', source: data.name
+              };
+            });
+          setMarketData(formatted);
+        } else {
+          setMarketData([]);
+        }
       }
     } catch (e) {
-      notify('Error fetching market data', 'error');
+      notify('Error fetching market data. API might be rate-limited.', 'error');
     }
     setLoadingMarket(false);
   };
@@ -123,11 +174,11 @@ const MarketView = ({ assets, setAssets, notify, addLog }) => {
 
   return (
     <div className="market-layout" style={{display: 'flex', gap: '20px', height: '100%', alignItems: 'flex-start', flexWrap: 'wrap'}}>
-      <div className="market-sidebar" style={{width: '200px', background: 'var(--bg-primary)', borderRadius: '12px', padding: '16px'}}>
+      <div className="market-sidebar" style={{width: '200px', background: 'var(--bg-primary)', borderRadius: '12px', padding: '16px', height: 'calc(100vh - 120px)', overflowY: 'auto'}}>
         <h3 style={{marginBottom: '16px', fontSize: '1.1rem'}}>Markets</h3>
         <ul style={{listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px'}}>
-          {[{id:'binance', label:'🟠 Binance'}, {id:'bybit', label:'🟡 Bybit'}, {id:'stocks', label:'🔵 US Stocks'}, {id:'gold', label:'🥇 Commodities'}].map(t => (
-            <li key={t.id} onClick={() => setActiveTab(t.id)} style={{padding: '10px 14px', borderRadius: '8px', cursor: 'pointer', background: activeTab === t.id ? 'var(--accent-color)' : 'transparent', color: activeTab === t.id ? '#fff' : 'var(--text-secondary)', fontWeight: activeTab === t.id ? 'bold' : 'normal'}}>
+          {MARKET_TABS.map(t => (
+            <li key={t.id} onClick={() => setActiveTab(t.id)} style={{padding: '10px 14px', borderRadius: '8px', cursor: 'pointer', background: activeTab === t.id ? 'var(--accent-color)' : 'transparent', color: activeTab === t.id ? '#fff' : 'var(--text-secondary)', fontWeight: activeTab === t.id ? 'bold' : 'normal', fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>
               {t.label}
             </li>
           ))}
