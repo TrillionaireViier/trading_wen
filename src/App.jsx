@@ -232,6 +232,25 @@ function App() {
   // Lifecycle
   useEffect(() => {
     setTimeout(() => setLoading(false), 800); // Simulate network load
+    
+    // Auto-refresh prices on initial load to get rid of $0
+    const initialRefresh = async () => {
+      let updatedCount = 0;
+      const newAssets = await Promise.all(assets.map(async (asset) => {
+        const livePrice = await fetchLivePrice(asset.ticker, asset.type);
+        if (livePrice && livePrice !== asset.price) {
+          updatedCount++;
+          return { ...asset, price: livePrice };
+        }
+        return asset;
+      }));
+      if (updatedCount > 0) {
+        setAssets(newAssets);
+      }
+    };
+    // Call it after a short delay so it doesn't block initial render
+    setTimeout(initialRefresh, 1000);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
