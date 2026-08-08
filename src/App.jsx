@@ -25,13 +25,131 @@ const MOCK_NEWS = [
 
 const TRANSLATIONS = {
   en: {
-    dashboard: 'Dashboard', assets: 'Assets', analytics: 'Analytics', logs: 'Activity Logs', settings: 'Settings',
+    dashboard: 'Dashboard', market: 'Market Explorer', assets: 'Assets', analytics: 'Analytics', logs: 'Activity Logs', settings: 'Settings',
     search: 'Search assets...', totalValue: 'Total Portfolio Value', topGainers: 'Top Gainers', news: 'Market News'
   },
   ru: {
-    dashboard: 'Главная', assets: 'Активы', analytics: 'Аналитика', logs: 'Журнал', settings: 'Настройки',
+    dashboard: 'Главная', market: 'Сканер Рынков', assets: 'Активы', analytics: 'Аналитика', logs: 'Журнал', settings: 'Настройки',
     search: 'Поиск...', totalValue: 'Общая Стоимость', topGainers: 'Лидеры Роста', news: 'Новости Рынка'
   }
+};
+
+const MarketView = ({ assets, setAssets, notify, addLog }) => {
+  const [activeTab, setActiveTab] = useState('binance');
+  const [marketData, setMarketData] = useState([]);
+  const [loadingMarket, setLoadingMarket] = useState(false);
+
+  useEffect(() => {
+    fetchMarketData(activeTab);
+  }, [activeTab]);
+
+  const fetchMarketData = async (tab) => {
+    setLoadingMarket(true);
+    setMarketData([]);
+    try {
+      if (tab === 'binance') {
+        const res = await fetch('https://api.binance.com/api/v3/ticker/24hr');
+        const data = await res.json();
+        const formatted = data
+          .filter(d => d.symbol.endsWith('USDT'))
+          .sort((a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
+          .slice(0, 100)
+          .map(d => ({
+            id: d.symbol, name: d.symbol.replace('USDT', ''), ticker: d.symbol.replace('USDT', ''),
+            price: parseFloat(d.lastPrice).toFixed(4), change24h: parseFloat(d.priceChangePercent).toFixed(2),
+            type: 'Crypto', source: 'Binance'
+          }));
+        setMarketData(formatted);
+      } else if (tab === 'bybit') {
+        const res = await fetch('https://api.bybit.com/v5/market/tickers?category=spot');
+        const data = await res.json();
+        const formatted = data.result.list
+          .filter(d => d.symbol.endsWith('USDT'))
+          .sort((a, b) => parseFloat(b.turnover24h) - parseFloat(a.turnover24h))
+          .slice(0, 100)
+          .map(d => ({
+            id: d.symbol, name: d.symbol.replace('USDT', ''), ticker: d.symbol.replace('USDT', ''),
+            price: parseFloat(d.lastPrice).toFixed(4), change24h: (parseFloat(d.price24hPcnt) * 100).toFixed(2),
+            type: 'Crypto', source: 'Bybit'
+          }));
+        setMarketData(formatted);
+      } else if (tab === 'stocks') {
+        const SYMBOLS = ['AAPL', 'TSLA', 'NVDA', 'MSFT', 'GME', 'AMC', 'MSTR', 'COIN', 'WEN', 'META'];
+        const formatted = await Promise.all(SYMBOLS.map(async sym => {
+          const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=cqp9l3hr01qg2v6f1v9gcqp9l3hr01qg2v6f1va0`);
+          const data = await res.json();
+          const change = data.pc > 0 ? ((data.c - data.pc) / data.pc) * 100 : 0;
+          return { id: sym, name: sym, ticker: sym, price: parseFloat(data.c).toFixed(2), change24h: change.toFixed(2), type: 'Stock', source: 'Finnhub' };
+        }));
+        setMarketData(formatted);
+      } else if (tab === 'gold') {
+        const SYMBOLS = [{ sym: 'OANDA:XAU_USD', name: 'Gold (XAU/USD)' }, { sym: 'OANDA:XAG_USD', name: 'Silver (XAG/USD)' }, { sym: 'OANDA:WTICO_USD', name: 'Crude Oil (WTI)' }];
+        const formatted = await Promise.all(SYMBOLS.map(async s => {
+          const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${s.sym}&token=cqp9l3hr01qg2v6f1v9gcqp9l3hr01qg2v6f1va0`);
+          const data = await res.json();
+          if (!data || data.c === 0) return null;
+          const change = data.pc > 0 ? ((data.c - data.pc) / data.pc) * 100 : 0;
+          return { id: s.sym, name: s.name, ticker: s.name.split(' ')[0], price: parseFloat(data.c).toFixed(2), change24h: change.toFixed(2), type: 'Commodity', source: 'Finnhub' };
+        }));
+        setMarketData(formatted.filter(Boolean));
+      }
+    } catch (e) {
+      notify('Error fetching market data', 'error');
+    }
+    setLoadingMarket(false);
+  };
+
+  const handleAddAsset = (asset) => {
+    if (assets.find(a => a.ticker === asset.ticker)) {
+      return notify(`${asset.ticker} is already in your assets!`, 'info');
+    }
+    setAssets([{id: Date.now(), name: asset.name, ticker: asset.ticker, price: asset.price, type: asset.type, date: new Date().toLocaleDateString()}, ...assets]);
+    addLog('Added Asset', `${asset.name} from Market`);
+    notify(`Added ${asset.ticker} to Tracker!`, 'success');
+  };
+
+  return (
+    <div className="market-layout" style={{display: 'flex', gap: '20px', height: '100%', alignItems: 'flex-start', flexWrap: 'wrap'}}>
+      <div className="market-sidebar" style={{width: '200px', background: 'var(--bg-primary)', borderRadius: '12px', padding: '16px'}}>
+        <h3 style={{marginBottom: '16px', fontSize: '1.1rem'}}>Markets</h3>
+        <ul style={{listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px'}}>
+          {[{id:'binance', label:'🟠 Binance'}, {id:'bybit', label:'🟡 Bybit'}, {id:'stocks', label:'🔵 US Stocks'}, {id:'gold', label:'🥇 Commodities'}].map(t => (
+            <li key={t.id} onClick={() => setActiveTab(t.id)} style={{padding: '10px 14px', borderRadius: '8px', cursor: 'pointer', background: activeTab === t.id ? 'var(--accent-color)' : 'transparent', color: activeTab === t.id ? '#fff' : 'var(--text-secondary)', fontWeight: activeTab === t.id ? 'bold' : 'normal'}}>
+              {t.label}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="market-content" style={{flex: 1, minWidth: '300px', background: 'var(--bg-primary)', borderRadius: '12px', padding: '20px', height: 'calc(100vh - 120px)', overflowY: 'auto'}}>
+        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
+          <h2>Top Volatility ({activeTab.toUpperCase()})</h2>
+          <button className="btn-secondary" onClick={() => fetchMarketData(activeTab)}>🔄 Refresh</button>
+        </div>
+        {loadingMarket ? (
+          <div style={{textAlign: 'center', padding: '40px'}}><div className="spinner"></div></div>
+        ) : (
+          <div className="table-wrapper"><table className="data-table">
+            <thead>
+              <tr><th>Asset</th><th>Price</th><th>24h Volatility</th><th>Action</th></tr>
+            </thead>
+            <tbody>
+              {marketData.map(asset => (
+                <tr key={asset.id}>
+                  <td><strong>{asset.name}</strong> <span className="badge">{asset.ticker}</span></td>
+                  <td>${asset.price}</td>
+                  <td style={{color: parseFloat(asset.change24h) >= 0 ? '#10b981' : '#ef4444', fontWeight: 'bold'}}>
+                    {parseFloat(asset.change24h) > 0 ? '+' : ''}{asset.change24h}%
+                  </td>
+                  <td><button className="btn-primary" style={{padding: '6px 12px', fontSize: '0.85rem'}} onClick={() => handleAddAsset(asset)}>+ Tracker</button></td>
+                </tr>
+              ))}
+              {marketData.length === 0 && <tr><td colSpan="4" style={{textAlign:'center'}}>No data available</td></tr>}
+            </tbody>
+          </table></div>
+        )}
+      </div>
+    </div>
+  );
 };
 
 function App() {
@@ -500,7 +618,7 @@ function App() {
           <button className="mobile-close" onClick={() => setSidebarOpen(false)}><X /></button>
         </div>
         <nav className="sidebar-nav">
-          {['dashboard', 'assets', 'analytics', 'logs', 'settings'].map(tab => (
+          {['dashboard', 'market', 'assets', 'analytics', 'logs', 'settings'].map(tab => (
             <Link key={tab} to={`/${tab}`} className={`nav-item ${activeTab === tab ? 'active' : ''}`} onClick={() => setSidebarOpen(false)} style={{textDecoration: 'none'}}>
               {t[tab]}
             </Link>
@@ -539,6 +657,7 @@ function App() {
         <div className="content-scroll">
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/market" element={<MarketView assets={assets} setAssets={setAssets} notify={notify} addLog={addLog} />} />
             
             <Route path="/dashboard" element={
               <div className="dashboard-grid">
