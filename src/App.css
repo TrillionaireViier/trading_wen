@@ -306,6 +306,49 @@ body {
 }
 .form-group input:focus, .form-group textarea:focus { border-color: var(--accent-color); }
 
+/* Modals */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  padding: 20px;
+}
+.modal-content {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  padding: 32px;
+  border-radius: 16px;
+  max-width: 400px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+  animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+@keyframes modalPop {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+.modal-icon {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger-color);
+  display: flex; justify-content: center; align-items: center;
+  margin: 0 auto 20px;
+}
+.modal-content h3 { margin: 0 0 10px; font-size: 1.4rem; }
+.modal-content p { color: var(--text-secondary); margin-bottom: 24px; line-height: 1.5; }
+.modal-actions {
+  display: flex;
+  gap: 16px;
+}
+.modal-actions button { flex: 1; justify-content: center; }
+
 /* Notifications Overlay */
 .notifications-container { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 9999; max-width: 90vw; }
 .notification-toast { background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 16px 24px; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); animation: slideIn 0.3s ease-out; }

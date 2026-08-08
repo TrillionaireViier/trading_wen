@@ -58,6 +58,7 @@ function App() {
   const itemsPerPage = 5;
   const [selectedIds, setSelectedIds] = useState([]);
   const [editingId, setEditingId] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   
   // Forms & Settings
   const [settings, setSettings] = useState(() => JSON.parse(localStorage.getItem('trading_settings') || '{"tgBotToken":"", "tgChatId":"", "msgTemplate":"New Asset: {name} ({ticker}) at ${price}"}'));
@@ -150,12 +151,15 @@ function App() {
   };
 
   const handleBatchDelete = () => {
-    if (confirm(`Delete ${selectedIds.length} assets?`)) {
-      setAssets(assets.filter(a => !selectedIds.includes(a.id)));
-      addLog('Batch Delete', `Deleted ${selectedIds.length} assets`);
-      setSelectedIds([]);
-      notify('Assets deleted', 'success');
-    }
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = () => {
+    setAssets(assets.filter(a => !selectedIds.includes(a.id)));
+    addLog('Batch Delete', `Deleted ${selectedIds.length} assets`);
+    setSelectedIds([]);
+    setShowDeleteModal(false);
+    notify('Assets deleted', 'success');
   };
 
   // Telegram Integration
@@ -214,6 +218,21 @@ function App() {
           <div key={n.id} className={`notification-toast ${n.type}`}>{n.msg}</div>
         ))}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-icon"><AlertTriangle size={32} /></div>
+            <h3>Delete Assets?</h3>
+            <p>Are you sure you want to permanently delete {selectedIds.length} selected assets? This action cannot be undone.</p>
+            <div className="modal-actions">
+              <button className="btn-secondary" onClick={() => setShowDeleteModal(false)}>Cancel</button>
+              <button className="btn-danger" onClick={confirmDelete}>Yes, Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Sidebar */}
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
