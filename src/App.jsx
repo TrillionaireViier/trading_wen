@@ -76,8 +76,15 @@ const MarketView = ({ assets, setAssets, notify, addLog }) => {
       } else if (tab === 'stocks') {
         const SYMBOLS = ['AAPL', 'TSLA', 'NVDA', 'MSFT', 'GME', 'AMC', 'MSTR', 'COIN', 'WEN', 'META'];
         const formatted = await Promise.all(SYMBOLS.map(async sym => {
-          const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=cqp9l3hr01qg2v6f1v9gcqp9l3hr01qg2v6f1va0`);
+          const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=d9rjbd1r01qoo7o4kca0d9rjbd1r01qoo7o4kcag`);
           const data = await res.json();
+          if (data.error) {
+            // Fallback mock data if API key is invalid
+            const mockPrices = { AAPL: 175.50, TSLA: 210.20, NVDA: 850.10, MSFT: 420.30, GME: 15.40, AMC: 4.20, MSTR: 1200.50, COIN: 250.30, WEN: 20.10, META: 480.90 };
+            const mockPrice = mockPrices[sym] || 100;
+            const randomChange = (Math.random() * 5 - 2.5).toFixed(2);
+            return { id: sym, name: sym, ticker: sym, price: mockPrice.toFixed(2), change24h: randomChange, type: 'Stock', source: 'Mock (API Key Invalid)' };
+          }
           const change = data.pc > 0 ? ((data.c - data.pc) / data.pc) * 100 : 0;
           return { id: sym, name: sym, ticker: sym, price: parseFloat(data.c).toFixed(2), change24h: change.toFixed(2), type: 'Stock', source: 'Finnhub' };
         }));
@@ -85,9 +92,15 @@ const MarketView = ({ assets, setAssets, notify, addLog }) => {
       } else if (tab === 'gold') {
         const SYMBOLS = [{ sym: 'OANDA:XAU_USD', name: 'Gold (XAU/USD)' }, { sym: 'OANDA:XAG_USD', name: 'Silver (XAG/USD)' }, { sym: 'OANDA:WTICO_USD', name: 'Crude Oil (WTI)' }];
         const formatted = await Promise.all(SYMBOLS.map(async s => {
-          const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${s.sym}&token=cqp9l3hr01qg2v6f1v9gcqp9l3hr01qg2v6f1va0`);
+          const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${s.sym}&token=d9rjbd1r01qoo7o4kca0d9rjbd1r01qoo7o4kcag`);
           const data = await res.json();
-          if (!data || data.c === 0) return null;
+          if (data.error || (!data && data.c === 0)) {
+            // Fallback mock data
+            const mockPrices = { 'OANDA:XAU_USD': 2350.40, 'OANDA:XAG_USD': 28.50, 'OANDA:WTICO_USD': 82.10 };
+            const mockPrice = mockPrices[s.sym] || 100;
+            const randomChange = (Math.random() * 2 - 1).toFixed(2);
+            return { id: s.sym, name: s.name, ticker: s.name.split(' ')[0], price: mockPrice.toFixed(2), change24h: randomChange, type: 'Commodity', source: 'Mock (API Key Invalid)' };
+          }
           const change = data.pc > 0 ? ((data.c - data.pc) / data.pc) * 100 : 0;
           return { id: s.sym, name: s.name, ticker: s.name.split(' ')[0], price: parseFloat(data.c).toFixed(2), change24h: change.toFixed(2), type: 'Commodity', source: 'Finnhub' };
         }));
@@ -250,7 +263,7 @@ function App() {
         const data = await res.json();
         return parseFloat(data.price).toFixed(4);
       } else {
-        const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker.toUpperCase()}&token=cqp9l3hr01qg2v6f1v9gcqp9l3hr01qg2v6f1va0`);
+        const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker.toUpperCase()}&token=d9rjbd1r01qoo7o4kca0d9rjbd1r01qoo7o4kcag`);
         if (!res.ok) throw new Error('Not found on Finnhub');
         const data = await res.json();
         if (data.c === 0) throw new Error('Invalid stock ticker');
@@ -781,6 +794,16 @@ function App() {
                           </td>
                         </tr>
                       ))}
+                      {paginatedAssets.length === 0 && (
+                        <tr>
+                          <td colSpan="6" style={{textAlign: 'center', padding: '40px', color: 'var(--text-secondary)'}}>
+                            <div style={{marginBottom: '10px'}}>No assets tracked yet. You can add them manually or from the Market Explorer.</div>
+                            <a href="https://coinmarketcap.com" target="_blank" rel="noreferrer" style={{color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 'bold'}}>
+                              <ArrowUpRight size={14} style={{display: 'inline', verticalAlign: 'middle'}}/> Explore top crypto on CoinMarketCap
+                            </a>
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
