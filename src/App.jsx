@@ -110,6 +110,46 @@ function App() {
     setTimeout(() => setNotifications(prev => prev.filter(n => n.id !== id)), 4000);
   };
 
+  const fetchLivePrice = async (ticker, type) => {
+    try {
+      if (type === 'Crypto') {
+        const res = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${ticker.toUpperCase()}USDT`);
+        if (!res.ok) throw new Error('Not found on Binance (use standard ticker like BTC)');
+        const data = await res.json();
+        return parseFloat(data.price).toFixed(4);
+      } else {
+        const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker.toUpperCase()}&token=cqp9l3hr01qg2v6f1v9gcqp9l3hr01qg2v6f1va0`);
+        if (!res.ok) throw new Error('Not found on Finnhub');
+        const data = await res.json();
+        if (data.c === 0) throw new Error('Invalid stock ticker');
+        return parseFloat(data.c).toFixed(2);
+      }
+    } catch (e) {
+      notify(`Could not fetch price for ${ticker}: ${e.message}`, 'error');
+      return null;
+    }
+  };
+
+  const handleRefreshAll = async () => {
+    notify('Refreshing prices...', 'info');
+    let updatedCount = 0;
+    const newAssets = await Promise.all(assets.map(async (asset) => {
+      const livePrice = await fetchLivePrice(asset.ticker, asset.type);
+      if (livePrice && livePrice !== asset.price) {
+        updatedCount++;
+        return { ...asset, price: livePrice };
+      }
+      return asset;
+    }));
+    if (updatedCount > 0) {
+      setAssets(newAssets);
+      addLog('Refresh Prices', `Updated ${updatedCount} assets`);
+      notify(`Updated ${updatedCount} prices`, 'success');
+    } else {
+      notify('All prices are up to date', 'info');
+    }
+  };
+
   // Actions
   const handleImportCSV = (e) => {
     const file = e.target.files[0];
@@ -250,7 +290,20 @@ function App() {
             </div>
             <div className="form-group" style={{textAlign: 'left', marginBottom: '16px'}}>
               <label>Ticker</label>
-              <input type="text" placeholder="e.g. BTC" value={newAsset.ticker} onChange={e => setNewAsset({...newAsset, ticker: e.target.value})} />
+              <div style={{display: 'flex', gap: '8px'}}>
+                <input type="text" placeholder="e.g. BTC or AAPL" value={newAsset.ticker} onChange={e => setNewAsset({...newAsset, ticker: e.target.value})} style={{flex: 1}} />
+                <button className="btn-secondary" style={{padding: '0 12px'}} onClick={async () => {
+                  if (!newAsset.ticker) return notify('Enter ticker first', 'error');
+                  setNewAsset({...newAsset, price: 'Fetching...'});
+                  const price = await fetchLivePrice(newAsset.ticker, newAsset.type);
+                  if (price) {
+                    setNewAsset({...newAsset, price});
+                    notify('Price updated!', 'success');
+                  } else {
+                    setNewAsset({...newAsset, price: ''});
+                  }
+                }}>Auto-fetch</button>
+              </div>
             </div>
             <div className="form-group" style={{textAlign: 'left', marginBottom: '16px'}}>
               <label>Price ($)</label>
@@ -389,6 +442,7 @@ function App() {
                 <div className="toolbar">
                   <div className="toolbar-actions">
                     <button className="btn-primary" onClick={() => setShowAddModal(true)}><Plus size={16}/> Add New</button>
+                    <button className="btn-secondary" onClick={handleRefreshAll}>🔄 Refresh Prices</button>
                     {selectedIds.length > 0 && (
                       <>
                         <button className="btn-danger" onClick={handleBatchDelete}><Trash2 size={16}/> Delete ({selectedIds.length})</button>
