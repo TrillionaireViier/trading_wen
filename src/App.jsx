@@ -75,6 +75,8 @@ function App() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newAsset, setNewAsset] = useState({ name: '', ticker: '', price: '', type: 'Crypto' });
   const [showTgModal, setShowTgModal] = useState(false);
+  const [showAddChannelModal, setShowAddChannelModal] = useState(false);
+  const [newChannel, setNewChannel] = useState({ name: '', chatId: '', botToken: '' });
   const [assetsToPublish, setAssetsToPublish] = useState([]);
   const [selectedTgChannels, setSelectedTgChannels] = useState([]);
   
@@ -400,6 +402,41 @@ function App() {
         </div>
       )}
 
+      {/* Add Telegram Channel Modal */}
+      {showAddChannelModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-icon" style={{background: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8'}}><Send size={32} /></div>
+            <h3>Add Bot & Channel</h3>
+            <div className="form-group" style={{textAlign: 'left', marginBottom: '16px'}}>
+              <label>Channel Name</label>
+              <input type="text" placeholder="e.g. VIP Signals" value={newChannel.name} onChange={e => setNewChannel({...newChannel, name: e.target.value})} />
+            </div>
+            <div className="form-group" style={{textAlign: 'left', marginBottom: '16px'}}>
+              <label>Chat ID</label>
+              <input type="text" placeholder="e.g. @mychannel or -100123..." value={newChannel.chatId} onChange={e => setNewChannel({...newChannel, chatId: e.target.value})} />
+            </div>
+            <div className="form-group" style={{textAlign: 'left', marginBottom: '24px'}}>
+              <label>Bot Token</label>
+              <input type="password" placeholder="From @BotFather" value={newChannel.botToken} onChange={e => setNewChannel({...newChannel, botToken: e.target.value})} />
+            </div>
+            <div className="modal-actions">
+              <button className="btn-secondary" onClick={() => setShowAddChannelModal(false)}>Cancel</button>
+              <button className="btn-primary" onClick={() => {
+                if (newChannel.name && newChannel.chatId && newChannel.botToken) {
+                  setSettings({...settings, tgChannels: [...settings.tgChannels, {id: Date.now(), ...newChannel}]});
+                  setShowAddChannelModal(false);
+                  setNewChannel({ name: '', chatId: '', botToken: '' });
+                  notify('Channel added successfully', 'success');
+                } else {
+                  notify('Please fill out all fields', 'error');
+                }
+              }}>Add Channel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Add Asset Modal */}
       {showAddModal && (
         <div className="modal-overlay">
@@ -691,15 +728,7 @@ function App() {
                       ))}
                       {settings.tgChannels.length === 0 && <span className="text-muted">No bots added.</span>}
                     </div>
-                    <button className="btn-secondary" style={{width: '100%', justifyContent: 'center'}} onClick={() => {
-                      const name = prompt('Channel Name (e.g. VIP Signals):');
-                      if(!name) return;
-                      const chatId = prompt('Chat ID (e.g. @mychannel or -100123...):');
-                      if(!chatId) return;
-                      const botToken = prompt('Bot Token for this channel (from @BotFather):');
-                      if(!botToken) return;
-                      setSettings({...settings, tgChannels: [...settings.tgChannels, {id: Date.now(), name, chatId, botToken}]});
-                    }}><Plus size={16}/> Add Bot & Channel</button>
+                    <button className="btn-secondary" style={{width: '100%', justifyContent: 'center'}} onClick={() => setShowAddChannelModal(true)}><Plus size={16}/> Add Bot & Channel</button>
                   </div>
                   
                   <div className="settings-card">
