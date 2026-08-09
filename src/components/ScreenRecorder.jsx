@@ -4,10 +4,12 @@ const ScreenRecorder = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [videoURL, setVideoURL] = useState(null);
   const [transcript, setTranscript] = useState('');
-  const [language, setLanguage] = useState('en-US');
+  const [personalNotes, setPersonalNotes] = useState('');
+  const [language, setLanguage] = useState('uk-UA');
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
   const recognitionRef = useRef(null);
+  const finalTranscriptRef = useRef('');
 
   const startRecording = async () => {
     try {
@@ -75,6 +77,7 @@ const ScreenRecorder = () => {
       setIsRecording(true);
       setVideoURL(null); // clear previous
       setTranscript(''); // reset transcript
+      finalTranscriptRef.current = ''; // reset final transcript
       
       // Start AI Speech Recognition
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -85,11 +88,15 @@ const ScreenRecorder = () => {
         recognitionRef.current.lang = language;
         
         recognitionRef.current.onresult = (event) => {
-          let currentTranscript = '';
-          for (let i = 0; i < event.results.length; i++) {
-            currentTranscript += event.results[i][0].transcript + ' ';
+          let interim = '';
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            if (event.results[i].isFinal) {
+              finalTranscriptRef.current += event.results[i][0].transcript + ' ';
+            } else {
+              interim += event.results[i][0].transcript;
+            }
           }
-          setTranscript(currentTranscript);
+          setTranscript(finalTranscriptRef.current + interim);
         };
         
         recognitionRef.current.onerror = (event) => {
@@ -123,8 +130,9 @@ const ScreenRecorder = () => {
   };
 
   const downloadTranscript = () => {
-    if (!transcript) return;
-    const blob = new Blob([transcript], { type: 'text/plain' });
+    if (!transcript && !personalNotes) return;
+    const content = `=== AI Meeting Transcript ===\n\n${transcript}\n\n=== Personal Notes ===\n\n${personalNotes}`;
+    const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -135,7 +143,7 @@ const ScreenRecorder = () => {
   };
 
   return (
-    <div style={{ padding: '40px', maxWidth: '800px', margin: '0 auto', textAlign: 'center', background: 'var(--bg-primary)', borderRadius: '12px', minHeight: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+    <div style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto', textAlign: 'center', background: 'var(--bg-primary)', borderRadius: '12px', minHeight: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', color: '#fff' }}>
       <h1 style={{ fontSize: '2.5rem', marginBottom: '10px', color: '#fff' }}>🎥 Screen Recorder Pro</h1>
       <p style={{ color: '#94a3b8', fontSize: '1.2rem', fontStyle: 'italic', marginBottom: '10px' }}>"Мама, мама, ми в телевізорі! 📺"</p>
       <p style={{ color: '#cbd5e1', marginBottom: '30px' }}>Record your screen and microphone instantly right from the browser. No installation required.</p>
@@ -181,14 +189,32 @@ const ScreenRecorder = () => {
         </div>
       )}
 
-      {(isRecording || transcript) && (
-        <div style={{ width: '100%', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid #38bdf8', padding: '20px', borderRadius: '12px', marginTop: '20px', textAlign: 'left' }}>
-          <h3 style={{ marginBottom: '15px', color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            🤖 AI Meeting Advisor (Live Notes)
-          </h3>
-          <div style={{ minHeight: '300px', maxHeight: '500px', overflowY: 'auto', color: '#fff', fontSize: '1.1rem', lineHeight: '1.6' }}>
-            {transcript || <span style={{ color: '#94a3b8' }}>Waiting for speech (Make sure you allow Microphone access)...</span>}
+      {(isRecording || transcript || personalNotes) && (
+        <div style={{ display: 'flex', gap: '20px', width: '100%', marginTop: '20px', flexDirection: 'row' }}>
+          
+          {/* Left Column: AI Advisor */}
+          <div style={{ flex: 1, background: 'rgba(56, 189, 248, 0.1)', border: '1px solid #38bdf8', padding: '20px', borderRadius: '12px', textAlign: 'left', display: 'flex', flexDirection: 'column' }}>
+            <h3 style={{ marginBottom: '15px', color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              🤖 AI Meeting Advisor (Live Notes)
+            </h3>
+            <div style={{ flex: 1, minHeight: '300px', maxHeight: '500px', overflowY: 'auto', color: '#fff', fontSize: '1.1rem', lineHeight: '1.6' }}>
+              {transcript || <span style={{ color: '#94a3b8' }}>Waiting for speech (Make sure you allow Microphone access)...</span>}
+            </div>
           </div>
+
+          {/* Right Column: Personal Notes */}
+          <div style={{ flex: 1, background: 'rgba(16, 185, 129, 0.1)', border: '1px solid #10b981', padding: '20px', borderRadius: '12px', textAlign: 'left', display: 'flex', flexDirection: 'column' }}>
+            <h3 style={{ marginBottom: '15px', color: '#10b981', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              📝 My Action Items & Notes
+            </h3>
+            <textarea 
+              value={personalNotes}
+              onChange={(e) => setPersonalNotes(e.target.value)}
+              placeholder="Type your personal notes, insights, or action items here..."
+              style={{ flex: 1, minHeight: '300px', maxHeight: '500px', background: 'transparent', border: 'none', color: '#fff', fontSize: '1.1rem', lineHeight: '1.6', outline: 'none', resize: 'none', width: '100%' }}
+            />
+          </div>
+
         </div>
       )}
 
@@ -212,9 +238,9 @@ const ScreenRecorder = () => {
               className="btn-primary" 
               style={{ padding: '12px 24px', fontSize: '1.1rem', flex: 1, background: '#3b82f6' }}
               onClick={downloadTranscript}
-              disabled={!transcript}
+              disabled={!transcript && !personalNotes}
             >
-              📝 AI Notes (.txt)
+              📝 Save Notes (.txt)
             </button>
           </div>
         </div>
