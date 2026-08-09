@@ -11,12 +11,33 @@ const ScreenRecorder = () => {
 
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({
+      // 1. Get screen stream (video + system audio if user allows)
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({
         video: { cursor: 'always' },
         audio: true
       });
 
-      mediaRecorderRef.current = new MediaRecorder(stream, {
+      // 2. Get microphone stream
+      let micStream;
+      try {
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (micErr) {
+        console.warn("Microphone access denied or unavailable", micErr);
+      }
+
+      // 3. Combine tracks
+      const tracks = [
+        ...screenStream.getVideoTracks(),
+        ...screenStream.getAudioTracks()
+      ];
+      
+      if (micStream) {
+        tracks.push(...micStream.getAudioTracks());
+      }
+
+      const combinedStream = new MediaStream(tracks);
+
+      mediaRecorderRef.current = new MediaRecorder(combinedStream, {
         mimeType: 'video/webm;codecs=vp9,opus'
       });
 
@@ -32,16 +53,19 @@ const ScreenRecorder = () => {
         setVideoURL(url);
         chunksRef.current = []; // reset
         
-        // Stop all tracks
-        stream.getTracks().forEach(track => track.stop());
+        // Stop all tracks (screen and mic)
+        combinedStream.getTracks().forEach(track => track.stop());
+        screenStream.getTracks().forEach(track => track.stop());
+        if (micStream) micStream.getTracks().forEach(track => track.stop());
+        
         setIsRecording(false);
         if (recognitionRef.current) {
           recognitionRef.current.stop();
         }
       };
 
-      // Handle user clicking "Stop sharing" from browser UI
-      stream.getVideoTracks()[0].onended = () => {
+      // Handle user clicking "Stop sharing" from browser UI (screen stream)
+      screenStream.getVideoTracks()[0].onended = () => {
         if (mediaRecorderRef.current.state === 'recording') {
           mediaRecorderRef.current.stop();
         }
@@ -162,8 +186,8 @@ const ScreenRecorder = () => {
           <h3 style={{ marginBottom: '15px', color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '10px' }}>
             🤖 AI Meeting Advisor (Live Notes)
           </h3>
-          <div style={{ minHeight: '100px', maxHeight: '200px', overflowY: 'auto', color: '#fff', fontSize: '1rem', lineHeight: '1.5' }}>
-            {transcript || <span style={{ color: '#94a3b8' }}>Waiting for speech...</span>}
+          <div style={{ minHeight: '300px', maxHeight: '500px', overflowY: 'auto', color: '#fff', fontSize: '1.1rem', lineHeight: '1.6' }}>
+            {transcript || <span style={{ color: '#94a3b8' }}>Waiting for speech (Make sure you allow Microphone access)...</span>}
           </div>
         </div>
       )}
