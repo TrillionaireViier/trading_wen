@@ -106,7 +106,7 @@ const MarketView = ({ assets, setAssets, notify, addLog }) => {
           }));
         setMarketData(formatted);
       } else if (tab === 'stocks') {
-        const SYMBOLS = ['AAPL', 'TSLA', 'NVDA', 'MSFT', 'GME', 'AMC', 'MSTR', 'COIN', 'WEN', 'META'];
+        const SYMBOLS = ['AAPL', 'TSLA', 'NVDA', 'MSFT', 'GME', 'AMC', 'MSTR', 'COIN', 'WEN', 'META', 'AMZN', 'GOOGL', 'NFLX', 'AMD', 'PLTR', 'HOOD', 'INTC', 'BA', 'DIS', 'SPY', 'QQQ'];
         const formatted = await Promise.all(SYMBOLS.map(async sym => {
           const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=d9rjbd1r01qoo7o4kca0d9rjbd1r01qoo7o4kcag`);
           const data = await res.json();
@@ -122,7 +122,16 @@ const MarketView = ({ assets, setAssets, notify, addLog }) => {
         }));
         setMarketData(formatted);
       } else if (tab === 'gold') {
-        const SYMBOLS = [{ sym: 'OANDA:XAU_USD', name: 'Gold (XAU/USD)' }, { sym: 'OANDA:XAG_USD', name: 'Silver (XAG/USD)' }, { sym: 'OANDA:WTICO_USD', name: 'Crude Oil (WTI)' }];
+        const SYMBOLS = [
+          { sym: 'OANDA:XAU_USD', name: 'Gold (XAU/USD)' },
+          { sym: 'OANDA:XAG_USD', name: 'Silver (XAG/USD)' },
+          { sym: 'OANDA:WTICO_USD', name: 'WTI Crude Oil' },
+          { sym: 'OANDA:BCO_USD', name: 'Brent Crude Oil' },
+          { sym: 'OANDA:XCU_USD', name: 'Copper (XCU/USD)' },
+          { sym: 'OANDA:NATGAS_USD', name: 'Natural Gas' },
+          { sym: 'OANDA:XPT_USD', name: 'Platinum' },
+          { sym: 'OANDA:XPD_USD', name: 'Palladium' }
+        ];
         const formatted = await Promise.all(SYMBOLS.map(async s => {
           const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${s.sym}&token=d9rjbd1r01qoo7o4kca0d9rjbd1r01qoo7o4kcag`);
           const data = await res.json();
