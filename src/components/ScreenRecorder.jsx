@@ -4,6 +4,7 @@ const ScreenRecorder = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [videoURL, setVideoURL] = useState(null);
   const [transcript, setTranscript] = useState('');
+  const [language, setLanguage] = useState('en-US');
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
   const recognitionRef = useRef(null);
@@ -57,6 +58,7 @@ const ScreenRecorder = () => {
         recognitionRef.current = new SpeechRecognition();
         recognitionRef.current.continuous = true;
         recognitionRef.current.interimResults = true;
+        recognitionRef.current.lang = language;
         
         recognitionRef.current.onresult = (event) => {
           let currentTranscript = '';
@@ -111,8 +113,22 @@ const ScreenRecorder = () => {
   return (
     <div style={{ padding: '40px', maxWidth: '800px', margin: '0 auto', textAlign: 'center', background: 'var(--bg-primary)', borderRadius: '12px', minHeight: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
       <h1 style={{ fontSize: '2.5rem', marginBottom: '10px' }}>🎥 Screen Recorder Pro</h1>
-      <p style={{ color: 'var(--text-secondary)', marginBottom: '40px' }}>Record your screen and microphone instantly right from the browser. No installation required.</p>
+      <p style={{ color: 'var(--text-secondary)', marginBottom: '30px' }}>Record your screen and microphone instantly right from the browser. No installation required.</p>
       
+      <div style={{ marginBottom: '30px', display: 'flex', alignItems: 'center', gap: '15px' }}>
+        <span style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>AI Language:</span>
+        <select 
+          value={language} 
+          onChange={(e) => setLanguage(e.target.value)}
+          disabled={isRecording}
+          style={{ padding: '8px 16px', borderRadius: '8px', background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', outline: 'none' }}
+        >
+          <option value="en-US">🇬🇧 English</option>
+          <option value="ru-RU">🇷🇺 Русский</option>
+          <option value="uk-UA">🇺🇦 Українська</option>
+        </select>
+      </div>
+
       <div style={{ display: 'flex', gap: '20px', marginBottom: '40px' }}>
         {!isRecording ? (
           <button 
