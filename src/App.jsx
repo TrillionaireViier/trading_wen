@@ -148,7 +148,7 @@ const MarketView = ({ assets, setAssets, notify, addLog }) => {
         const symbolsToFetch = ALL_STOCKS.slice(startIndex, limit);
         
         const formatted = await Promise.all(symbolsToFetch.map(async sym => {
-          const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=d9s548pr01qoo7o6n3agd9s548pr01qoo7o6n3b0`);
+          const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=d9s6frpr01qoo7o6rp6gd9s6frpr01qoo7o6rp70`);
           const data = await res.json();
           if (data.error) {
             const mockPrice = 100 + (Math.random() * 50);
@@ -166,7 +166,7 @@ const MarketView = ({ assets, setAssets, notify, addLog }) => {
         const symbolsToFetch = ALL_COMMODITIES.slice(startIndex, limit);
         
         const formatted = await Promise.all(symbolsToFetch.map(async s => {
-          const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${s.sym}&token=d9s548pr01qoo7o6n3agd9s548pr01qoo7o6n3b0`);
+          const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${s.sym}&token=d9s6frpr01qoo7o6rp6gd9s6frpr01qoo7o6rp70`);
           const data = await res.json();
           if (data.error || (!data && data.c === 0)) {
             const mockPrice = 100 + (Math.random() * 50);
@@ -415,7 +415,7 @@ function App() {
         if (data.price === undefined) throw new Error('Invalid crypto price');
         return parseFloat(data.price).toFixed(4);
       } else {
-        const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker.toUpperCase()}&token=d9s548pr01qoo7o6n3agd9s548pr01qoo7o6n3b0`);
+        const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker.toUpperCase()}&token=d9s6frpr01qoo7o6rp6gd9s6frpr01qoo7o6rp70`);
         if (!res.ok) throw new Error('Not found on Finnhub');
         const data = await res.json();
         if (data.error || data.c === undefined || data.c === 0) throw new Error(data.error || 'Invalid stock ticker');
