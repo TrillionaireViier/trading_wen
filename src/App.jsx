@@ -64,18 +64,56 @@ const MARKET_TABS = [
   { id: 'gold', label: '🥇 Commodities', type: 'tradfi' }
 ];
 
+const ALL_STOCKS = [
+  'AAPL', 'TSLA', 'NVDA', 'MSFT', 'GME', 'AMC', 'MSTR', 'COIN', 'WEN', 'META', 
+  'AMZN', 'GOOGL', 'NFLX', 'AMD', 'PLTR', 'HOOD', 'INTC', 'BA', 'DIS', 'SPY', 
+  'QQQ', 'UBER', 'ABNB', 'SNOW', 'PYPL', 'SQ', 'SHOP', 'CRWD', 'PANW', 'DDOG',
+  'NET', 'ROKU', 'ZM', 'PINS', 'SNAP', 'SPOT', 'DOCU', 'TWLO', 'U', 'RBLX',
+  'RIVN', 'LCID', 'NIO', 'XPEV', 'LI', 'BABA', 'JD', 'PDD', 'BIDU', 'NTES',
+  'TCEHY', 'V', 'MA', 'JPM', 'BAC', 'WFC', 'C', 'GS', 'MS', 'BLK',
+  'JNJ', 'UNH', 'PFE', 'ABBV', 'MRK', 'TMO', 'DHR', 'ABT', 'LLY', 'BMY',
+  'PG', 'KO', 'PEP', 'WMT', 'COST', 'MCD', 'NKE', 'SBUX', 'HD', 'LOW',
+  'XOM', 'CVX', 'COP', 'SLB', 'EOG', 'PXD', 'MPC', 'VLO', 'PSX', 'OXY'
+];
+
+const ALL_COMMODITIES = [
+  { sym: 'OANDA:XAU_USD', name: 'Gold (XAU/USD)' },
+  { sym: 'OANDA:XAG_USD', name: 'Silver (XAG/USD)' },
+  { sym: 'OANDA:WTICO_USD', name: 'WTI Crude Oil' },
+  { sym: 'OANDA:BCO_USD', name: 'Brent Crude Oil' },
+  { sym: 'OANDA:XCU_USD', name: 'Copper (XCU/USD)' },
+  { sym: 'OANDA:NATGAS_USD', name: 'Natural Gas' },
+  { sym: 'OANDA:XPT_USD', name: 'Platinum' },
+  { sym: 'OANDA:XPD_USD', name: 'Palladium' },
+  { sym: 'OANDA:EUR_USD', name: 'EUR/USD' },
+  { sym: 'OANDA:GBP_USD', name: 'GBP/USD' },
+  { sym: 'OANDA:USD_JPY', name: 'USD/JPY' },
+  { sym: 'OANDA:AUD_USD', name: 'AUD/USD' },
+  { sym: 'OANDA:USD_CAD', name: 'USD/CAD' },
+  { sym: 'OANDA:USD_CHF', name: 'USD/CHF' },
+  { sym: 'OANDA:NZD_USD', name: 'NZD/USD' },
+  { sym: 'OANDA:EUR_GBP', name: 'EUR/GBP' }
+];
+
 const MarketView = ({ assets, setAssets, notify, addLog }) => {
   const [activeTab, setActiveTab] = useState('binance');
   const [marketData, setMarketData] = useState([]);
   const [loadingMarket, setLoadingMarket] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadedCount, setLoadedCount] = useState(20);
 
   useEffect(() => {
-    fetchMarketData(activeTab);
+    setLoadedCount(20);
+    fetchMarketData(activeTab, 20, false);
   }, [activeTab]);
 
-  const fetchMarketData = async (tab) => {
-    setLoadingMarket(true);
-    setMarketData([]);
+  const fetchMarketData = async (tab, limit = loadedCount, isLoadMore = false) => {
+    if (isLoadMore) setLoadingMore(true);
+    else {
+      setLoadingMarket(true);
+      setMarketData([]);
+    }
+    
     try {
       if (tab === 'binance') {
         const res = await fetch('https://api.binance.com/api/v3/ticker/24hr');
@@ -106,46 +144,42 @@ const MarketView = ({ assets, setAssets, notify, addLog }) => {
           }));
         setMarketData(formatted);
       } else if (tab === 'stocks') {
-        const SYMBOLS = ['AAPL', 'TSLA', 'NVDA', 'MSFT', 'GME', 'AMC', 'MSTR', 'COIN', 'WEN', 'META', 'AMZN', 'GOOGL', 'NFLX', 'AMD', 'PLTR', 'HOOD', 'INTC', 'BA', 'DIS', 'SPY', 'QQQ'];
-        const formatted = await Promise.all(SYMBOLS.map(async sym => {
+        const startIndex = isLoadMore ? loadedCount : 0;
+        const symbolsToFetch = ALL_STOCKS.slice(startIndex, limit);
+        
+        const formatted = await Promise.all(symbolsToFetch.map(async sym => {
           const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=d9rjbd1r01qoo7o4kca0d9rjbd1r01qoo7o4kcag`);
           const data = await res.json();
           if (data.error) {
-            // Fallback mock data if API key is invalid
-            const mockPrices = { AAPL: 175.50, TSLA: 210.20, NVDA: 850.10, MSFT: 420.30, GME: 15.40, AMC: 4.20, MSTR: 1200.50, COIN: 250.30, WEN: 20.10, META: 480.90 };
-            const mockPrice = mockPrices[sym] || 100;
+            const mockPrice = 100 + (Math.random() * 50);
             const randomChange = (Math.random() * 5 - 2.5).toFixed(2);
             return { id: sym, name: sym, ticker: sym, price: mockPrice.toFixed(2), change24h: randomChange, funding: '-', type: 'Stock', source: 'Mock (API Key Invalid)' };
           }
           const change = data.pc > 0 ? ((data.c - data.pc) / data.pc) * 100 : 0;
           return { id: sym, name: sym, ticker: sym, price: parseFloat(data.c).toFixed(2), change24h: change.toFixed(2), funding: '-', type: 'Stock', source: 'Finnhub' };
         }));
-        setMarketData(formatted);
+        
+        if (isLoadMore) setMarketData(prev => [...prev, ...formatted]);
+        else setMarketData(formatted);
       } else if (tab === 'gold') {
-        const SYMBOLS = [
-          { sym: 'OANDA:XAU_USD', name: 'Gold (XAU/USD)' },
-          { sym: 'OANDA:XAG_USD', name: 'Silver (XAG/USD)' },
-          { sym: 'OANDA:WTICO_USD', name: 'WTI Crude Oil' },
-          { sym: 'OANDA:BCO_USD', name: 'Brent Crude Oil' },
-          { sym: 'OANDA:XCU_USD', name: 'Copper (XCU/USD)' },
-          { sym: 'OANDA:NATGAS_USD', name: 'Natural Gas' },
-          { sym: 'OANDA:XPT_USD', name: 'Platinum' },
-          { sym: 'OANDA:XPD_USD', name: 'Palladium' }
-        ];
-        const formatted = await Promise.all(SYMBOLS.map(async s => {
+        const startIndex = isLoadMore ? loadedCount : 0;
+        const symbolsToFetch = ALL_COMMODITIES.slice(startIndex, limit);
+        
+        const formatted = await Promise.all(symbolsToFetch.map(async s => {
           const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${s.sym}&token=d9rjbd1r01qoo7o4kca0d9rjbd1r01qoo7o4kcag`);
           const data = await res.json();
           if (data.error || (!data && data.c === 0)) {
-            // Fallback mock data
-            const mockPrices = { 'OANDA:XAU_USD': 2350.40, 'OANDA:XAG_USD': 28.50, 'OANDA:WTICO_USD': 82.10 };
-            const mockPrice = mockPrices[s.sym] || 100;
+            const mockPrice = 100 + (Math.random() * 50);
             const randomChange = (Math.random() * 2 - 1).toFixed(2);
             return { id: s.sym, name: s.name, ticker: s.name.split(' ')[0], price: mockPrice.toFixed(2), change24h: randomChange, funding: '-', type: 'Commodity', source: 'Mock (API Key Invalid)' };
           }
           const change = data.pc > 0 ? ((data.c - data.pc) / data.pc) * 100 : 0;
           return { id: s.sym, name: s.name, ticker: s.name.split(' ')[0], price: parseFloat(data.c).toFixed(2), change24h: change.toFixed(2), funding: '-', type: 'Commodity', source: 'Finnhub' };
         }));
-        setMarketData(formatted.filter(Boolean));
+        
+        const validFormatted = formatted.filter(Boolean);
+        if (isLoadMore) setMarketData(prev => [...prev, ...validFormatted]);
+        else setMarketData(validFormatted);
       } else {
         // Fallback for the other 23 crypto exchanges (Mock data to avoid CoinGecko 429 Rate Limits / CORS errors)
         const MOCK_TICKERS = ['BTC', 'ETH', 'SOL', 'XRP', 'ADA', 'AVAX', 'DOGE', 'DOT', 'LINK', 'MATIC', 'SHIB', 'LTC', 'UNI', 'ATOM', 'ETC', 'XLM', 'ALGO', 'NEAR', 'VET', 'ICP'];
@@ -181,7 +215,18 @@ const MarketView = ({ assets, setAssets, notify, addLog }) => {
     } catch (e) {
       notify('Error fetching market data. API might be rate-limited.', 'error');
     }
-    setLoadingMarket(false);
+    
+    if (isLoadMore) {
+      setLoadedCount(limit);
+      setLoadingMore(false);
+    } else {
+      setLoadingMarket(false);
+    }
+  };
+
+  const handleLoadMore = () => {
+    const newLimit = loadedCount + 20;
+    fetchMarketData(activeTab, newLimit, true);
   };
 
   const handleAddAsset = (asset) => {
@@ -231,7 +276,20 @@ const MarketView = ({ assets, setAssets, notify, addLog }) => {
               ))}
               {marketData.length === 0 && <tr><td colSpan="5" style={{textAlign:'center'}}>No data available</td></tr>}
             </tbody>
-          </table></div>
+          </table>
+          
+          {(activeTab === 'stocks' || activeTab === 'gold') && (
+            <div style={{textAlign: 'center', marginTop: '20px'}}>
+              <button 
+                className="btn-secondary" 
+                onClick={handleLoadMore} 
+                disabled={loadingMore || (activeTab === 'stocks' ? loadedCount >= ALL_STOCKS.length : loadedCount >= ALL_COMMODITIES.length)}
+              >
+                {loadingMore ? 'Loading...' : (activeTab === 'stocks' && loadedCount >= ALL_STOCKS.length) || (activeTab === 'gold' && loadedCount >= ALL_COMMODITIES.length) ? 'All Loaded' : '⬇ Load More'}
+              </button>
+            </div>
+          )}
+          </div>
         )}
       </div>
     </div>
