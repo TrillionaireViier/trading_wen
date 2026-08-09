@@ -9,6 +9,7 @@ import {
   Edit2, Menu, X, Check, Eye, Save, Plus, ArrowUpRight, ArrowDownRight, Printer, AlertTriangle, Send
 } from 'lucide-react';
 import Papa from 'papaparse';
+import ScreenRecorder from './components/ScreenRecorder';
 import './App.css';
 
 // Mock Data
@@ -25,11 +26,11 @@ const MOCK_NEWS = [
 
 const TRANSLATIONS = {
   en: {
-    dashboard: 'Dashboard', market: 'Market Explorer', assets: 'Assets', analytics: 'Analytics', logs: 'Activity Logs', settings: 'Settings',
+    dashboard: 'Dashboard', market: 'Market Explorer', assets: 'Assets', analytics: 'Analytics', logs: 'Activity Logs', settings: 'Settings', recorder: 'Recorder',
     search: 'Search assets...', totalValue: 'Total Portfolio Value', topGainers: 'Top Gainers', news: 'Market News'
   },
   ru: {
-    dashboard: 'Главная', market: 'Сканер Рынков', assets: 'Активы', analytics: 'Аналитика', logs: 'Журнал', settings: 'Настройки',
+    dashboard: 'Главная', market: 'Сканер Рынков', assets: 'Активы', analytics: 'Аналитика', logs: 'Журнал', settings: 'Настройки', recorder: 'Запись Экрана',
     search: 'Поиск...', totalValue: 'Общая Стоимость', topGainers: 'Лидеры Роста', news: 'Новости Рынка'
   }
 };
@@ -783,7 +784,7 @@ function App() {
           <button className="mobile-close" onClick={() => setSidebarOpen(false)}><X /></button>
         </div>
         <nav className="sidebar-nav">
-          {['dashboard', 'market', 'assets', 'analytics', 'logs', 'settings'].map(tab => (
+          {['dashboard', 'market', 'assets', 'analytics', 'logs', 'recorder', 'settings'].map(tab => (
             <Link key={tab} to={`/${tab}`} className={`nav-item ${activeTab === tab ? 'active' : ''}`} onClick={() => setSidebarOpen(false)} style={{textDecoration: 'none'}}>
               {t[tab]}
             </Link>
@@ -876,6 +877,8 @@ function App() {
                 </div>
               </div>
             } />
+
+            <Route path="/recorder" element={<ScreenRecorder />} />
 
             <Route path="/assets" element={
               <div className="assets-view">
