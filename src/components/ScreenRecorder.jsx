@@ -3,8 +3,10 @@ import React, { useState, useRef } from 'react';
 const ScreenRecorder = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [videoURL, setVideoURL] = useState(null);
+  const [transcript, setTranscript] = useState('');
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
+  const recognitionRef = useRef(null);
 
   const startRecording = async () => {
     try {
@@ -32,6 +34,9 @@ const ScreenRecorder = () => {
         // Stop all tracks
         stream.getTracks().forEach(track => track.stop());
         setIsRecording(false);
+        if (recognitionRef.current) {
+          recognitionRef.current.stop();
+        }
       };
 
       // Handle user clicking "Stop sharing" from browser UI
@@ -44,6 +49,31 @@ const ScreenRecorder = () => {
       mediaRecorderRef.current.start();
       setIsRecording(true);
       setVideoURL(null); // clear previous
+      setTranscript(''); // reset transcript
+      
+      // Start AI Speech Recognition
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        recognitionRef.current = new SpeechRecognition();
+        recognitionRef.current.continuous = true;
+        recognitionRef.current.interimResults = true;
+        
+        recognitionRef.current.onresult = (event) => {
+          let currentTranscript = '';
+          for (let i = 0; i < event.results.length; i++) {
+            currentTranscript += event.results[i][0].transcript + ' ';
+          }
+          setTranscript(currentTranscript);
+        };
+        
+        recognitionRef.current.onerror = (event) => {
+          console.log('Speech recognition error', event.error);
+        };
+        
+        recognitionRef.current.start();
+      } else {
+        console.warn("Speech Recognition not supported in this browser.");
+      }
     } catch (err) {
       console.error("Error accessing screen/audio:", err);
       alert("Failed to start recording. Please ensure permissions are granted.");
@@ -61,6 +91,18 @@ const ScreenRecorder = () => {
     const a = document.createElement('a');
     a.href = videoURL;
     a.download = `screen-recording-${new Date().getTime()}.webm`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  const downloadTranscript = () => {
+    if (!transcript) return;
+    const blob = new Blob([transcript], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ai-meeting-notes-${new Date().getTime()}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -98,21 +140,42 @@ const ScreenRecorder = () => {
         </div>
       )}
 
+      {(isRecording || transcript) && (
+        <div style={{ width: '100%', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid #38bdf8', padding: '20px', borderRadius: '12px', marginTop: '20px', textAlign: 'left' }}>
+          <h3 style={{ marginBottom: '15px', color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            🤖 AI Meeting Advisor (Live Notes)
+          </h3>
+          <div style={{ minHeight: '100px', maxHeight: '200px', overflowY: 'auto', color: 'var(--text-primary)', fontSize: '1rem', lineHeight: '1.5' }}>
+            {transcript || <span style={{ color: 'var(--text-secondary)' }}>Waiting for speech...</span>}
+          </div>
+        </div>
+      )}
+
       {videoURL && !isRecording && (
         <div style={{ width: '100%', background: 'var(--bg-secondary)', padding: '20px', borderRadius: '12px', marginTop: '20px' }}>
-          <h3 style={{ marginBottom: '15px' }}>Preview</h3>
+          <h3 style={{ marginBottom: '15px' }}>Preview & Downloads</h3>
           <video 
             src={videoURL} 
             controls 
             style={{ width: '100%', borderRadius: '8px', marginBottom: '20px', background: '#000' }}
           />
-          <button 
-            className="btn-primary" 
-            style={{ padding: '12px 24px', fontSize: '1.1rem', width: '100%', background: '#10b981' }}
-            onClick={downloadVideo}
-          >
-            ⬇ Download Video (.webm)
-          </button>
+          <div style={{ display: 'flex', gap: '15px' }}>
+            <button 
+              className="btn-primary" 
+              style={{ padding: '12px 24px', fontSize: '1.1rem', flex: 1, background: '#10b981' }}
+              onClick={downloadVideo}
+            >
+              ⬇ Video (.webm)
+            </button>
+            <button 
+              className="btn-primary" 
+              style={{ padding: '12px 24px', fontSize: '1.1rem', flex: 1, background: '#3b82f6' }}
+              onClick={downloadTranscript}
+              disabled={!transcript}
+            >
+              📝 AI Notes (.txt)
+            </button>
+          </div>
         </div>
       )}
     </div>
