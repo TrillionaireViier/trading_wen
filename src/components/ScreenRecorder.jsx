@@ -111,21 +111,22 @@ const ScreenRecorder = () => {
   };
 
   return (
-    <div style={{ padding: '40px', maxWidth: '800px', margin: '0 auto', textAlign: 'center', background: 'var(--bg-primary)', borderRadius: '12px', minHeight: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-      <h1 style={{ fontSize: '2.5rem', marginBottom: '10px' }}>🎥 Screen Recorder Pro</h1>
-      <p style={{ color: 'var(--text-secondary)', marginBottom: '30px' }}>Record your screen and microphone instantly right from the browser. No installation required.</p>
+    <div style={{ padding: '40px', maxWidth: '800px', margin: '0 auto', textAlign: 'center', background: 'var(--bg-primary)', borderRadius: '12px', minHeight: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+      <h1 style={{ fontSize: '2.5rem', marginBottom: '10px', color: '#fff' }}>🎥 Screen Recorder Pro</h1>
+      <p style={{ color: '#94a3b8', fontSize: '1.2rem', fontStyle: 'italic', marginBottom: '10px' }}>"Мама, мама, ми в телевізорі! 📺"</p>
+      <p style={{ color: '#cbd5e1', marginBottom: '30px' }}>Record your screen and microphone instantly right from the browser. No installation required.</p>
       
       <div style={{ marginBottom: '30px', display: 'flex', alignItems: 'center', gap: '15px' }}>
-        <span style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>AI Language:</span>
+        <span style={{ color: '#fff', fontWeight: 'bold' }}>AI Language:</span>
         <select 
           value={language} 
           onChange={(e) => setLanguage(e.target.value)}
           disabled={isRecording}
-          style={{ padding: '8px 16px', borderRadius: '8px', background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', outline: 'none' }}
+          style={{ padding: '8px 16px', borderRadius: '8px', background: '#1e293b', color: '#fff', border: '1px solid #475569', outline: 'none' }}
         >
-          <option value="en-US">🇬🇧 English</option>
-          <option value="ru-RU">🇷🇺 Русский</option>
           <option value="uk-UA">🇺🇦 Українська</option>
+          <option value="ru-RU">🇷🇺 Русский</option>
+          <option value="en-US">🇬🇧 English</option>
         </select>
       </div>
 
@@ -161,8 +162,8 @@ const ScreenRecorder = () => {
           <h3 style={{ marginBottom: '15px', color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '10px' }}>
             🤖 AI Meeting Advisor (Live Notes)
           </h3>
-          <div style={{ minHeight: '100px', maxHeight: '200px', overflowY: 'auto', color: 'var(--text-primary)', fontSize: '1rem', lineHeight: '1.5' }}>
-            {transcript || <span style={{ color: 'var(--text-secondary)' }}>Waiting for speech...</span>}
+          <div style={{ minHeight: '100px', maxHeight: '200px', overflowY: 'auto', color: '#fff', fontSize: '1rem', lineHeight: '1.5' }}>
+            {transcript || <span style={{ color: '#94a3b8' }}>Waiting for speech...</span>}
           </div>
         </div>
       )}
